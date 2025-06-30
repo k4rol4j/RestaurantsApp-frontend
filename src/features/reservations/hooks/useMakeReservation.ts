@@ -1,0 +1,87 @@
+import { useState } from "react";
+import {makeReservation} from "../api/reservations.ts";
+
+export type Restaurant = {
+    id: number;
+    name: string;
+    location: string;
+    cuisine: string;
+    rating: number;
+    imageUrl: string | null;
+    description: string | null;
+    latitude: number;
+    longitude: number;
+    imageGallery?: string;
+    openingHours?: string;
+};
+
+// Typ dla listy restauracji
+export type RestaurantsType = Restaurant[];
+
+// Typ dla danych rezerwacji
+export type MakeReservationValues = {
+    name: string;
+    guests: number;
+    date: string;
+    restaurantId: number | null;
+};
+
+export const useMakeReservation = () => {
+    // Stan formularza z typem MakeReservationValues
+    const [formData, setFormData] = useState<MakeReservationValues>({
+        name: "",
+        guests: 1,
+        date: "",
+        restaurantId: null,
+    });
+
+    const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+
+    const [error, setError] = useState<string | null>(null);
+
+    const [submitted, setSubmitted] = useState(false);
+
+    const handleSubmit = async () => {
+        if (formData.name.length < 3) {
+            setError("Name must be at least 3 characters.");
+            return;
+        }
+        if (!formData.date) {
+            setError("Please select a date.");
+            return;
+        }
+        if (!formData.restaurantId) {
+            setError("Please select a restaurant.");
+            return;
+        }
+
+        try {
+            // Domyślnie ustalamy godzinę na 18:00
+            const time = "18:00";
+            await makeReservation({
+                restaurantId: formData.restaurantId,
+                date: formData.date,
+                time,
+                people: formData.guests,
+            });
+            setError(null);
+            setSubmitted(true);
+        } catch (error: any) {
+            console.error(error);
+            setError(error?.response?.data?.message || "Błąd podczas rezerwacji.");
+        }
+    };
+
+
+    return {
+        formData,
+        setFormData,
+        selectedRestaurant,
+        setSelectedRestaurant,
+        error,
+        setError,
+        submitted,
+        setSubmitted,
+        handleSubmit,
+    };
+};
