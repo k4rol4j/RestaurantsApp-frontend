@@ -3,7 +3,7 @@ import { filterRestaurants } from "../api/restaurants";
 import { Restaurant } from "../hooks/useMakeReservation.ts";
 
 type Filters = {
-    cuisine?: string;
+    cuisine?: string[];
     minRating?: number;
     availableDate?: string;
 };
