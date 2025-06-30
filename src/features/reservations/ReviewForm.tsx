@@ -1,64 +1,164 @@
+// ReservationForm.tsx (wersja z tłumaczeniem dni tygodnia)
 import {
     Button,
-    Card,
-    Rating,
-    Stack,
-    Text,
-    Textarea,
-    Group,
+    NumberInput,
+    Box,
+    Notification,
+    Select,
 } from "@mantine/core";
-import { useState } from "react";
-import { addReview } from "./api/restaurants";
+import { DatePickerInput } from "@mantine/dates";
+import { IconCheck, IconX } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { makeReservation } from "./api/reservations";
+import dayjs from "dayjs";
+import 'dayjs/locale/pl';
+dayjs.locale('pl');
 
-interface ReviewFormProps {
+const generateTimeSlots = (open: string, close: string, stepMinutes = 30) => {
+    const slots = [];
+    let [h, m] = open.split(":" as const).map(Number);
+    const [endH, endM] = close.split(":" as const).map(Number);
+
+    while (h < endH || (h === endH && m < endM)) {
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        slots.push({ value: timeStr, label: timeStr });
+        m += stepMinutes;
+        if (m >= 60) {
+            h += 1;
+            m -= 60;
+        }
+    }
+    return slots;
+};
+
+export const ReservationForm = ({
+                                    restaurantId,
+                                    restaurant,
+                                }: {
     restaurantId: number;
-    onSubmit?: () => void;
-    onCancel?: () => void;
-}
+    restaurant: any;
+}) => {
+    const [date, setDate] = useState<string>("");
+    const [time, setTime] = useState("");
+    const [people, setPeople] = useState<number>(2);
+    const [success, setSuccess] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
 
-export const ReviewForm = ({
-                               restaurantId,
-                               onSubmit,
-                               onCancel,
-                           }: ReviewFormProps) => {
-    const [rating, setRating] = useState(0);
-    const [comment, setComment] = useState("");
+    useEffect(() => {
+        if (!restaurant.openingHours || !date) return;
+
+        const plToEnDays: Record<string, string> = {
+            "poniedziałek": "monday",
+            "wtorek": "tuesday",
+            "środa": "wednesday",
+            "czwartek": "thursday",
+            "piątek": "friday",
+            "sobota": "saturday",
+            "niedziela": "sunday",
+        };
+
+        const plDay = dayjs(date).format("dddd").toLowerCase();
+        const day = plToEnDays[plDay];
+        console.log("DEBUG → dzień tygodnia:", plDay, "→", day);
+
+        const hours = JSON.parse(restaurant.openingHours)[day];
+        console.log("DEBUG → godziny dla dnia:", hours);
+        if (hours) {
+            setTimeSlots(generateTimeSlots(hours.open, hours.close));
+        } else {
+            setTimeSlots([]);
+        }
+    }, [restaurant, date]);
 
     const handleSubmit = async () => {
-        if (rating === 0 || comment.trim() === "") return;
-
         try {
-            await addReview({ restaurantId, rating, comment });
-            setRating(0);
-            setComment("");
-            if (onSubmit) onSubmit(); // odświeżenie listy
-        } catch (e) {
-            console.error("Błąd przy dodawaniu opinii", e);
+            await makeReservation({ restaurantId, date, time, people });
+            setSuccess(true);
+            setError(null);
+        } catch (error) {
+            console.error("Błąd rezerwacji:", error);
+            setSuccess(false);
+
+            let message: string | null = null;
+
+            if (error instanceof Response) {
+                try {
+                    const err = await error.json();
+                    message = err?.message;
+                } catch {
+                    message = null;
+                }
+            }
+
+            setError(message ?? "Wystąpił błąd podczas rezerwacji.");
         }
     };
 
     return (
-        <Card withBorder p="md" mt="md">
-            <Stack>
-                <Text fw={700}>Dodaj swoją opinię</Text>
-                <Rating value={rating} onChange={setRating} />
-                <Textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.currentTarget.value)}
-                    placeholder="Napisz swoją opinię..."
-                />
-                <Group justify="flex-end">
-                    <Button variant="default" onClick={onCancel}>
-                        Anuluj
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={rating === 0 || comment.trim() === ""}
-                    >
-                        Dodaj opinię
-                    </Button>
-                </Group>
-            </Stack>
-        </Card>
+        <Box
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                maxWidth: 400,
+                marginTop: 24,
+            }}
+        >
+            <DatePickerInput
+                label="Data"
+                placeholder="Wybierz datę"
+                value={date ? new Date(date) : null}
+                onChange={(value) => {
+                    if (value) setDate(dayjs(value).format("YYYY-MM-DD"));
+                }}
+                valueFormat="YYYY-MM-DD"
+                locale="pl"
+            />
+
+            <Select
+                label="Godzina"
+                placeholder="Wybierz godzinę"
+                data={timeSlots}
+                value={time}
+                onChange={(val) => setTime(val ?? "")}
+                disabled={timeSlots.length === 0}
+            />
+
+            <NumberInput
+                label="Liczba osób"
+                min={1}
+                value={people}
+                onChange={(value) => {
+                    if (typeof value === "number") {
+                        setPeople(value);
+                    }
+                }}
+            />
+
+            <Button onClick={handleSubmit}>Rezerwuj</Button>
+
+            {success && (
+                <Notification
+                    icon={<IconCheck size="1.1rem" />}
+                    color="teal"
+                    title="Sukces"
+                    onClose={() => setSuccess(false)}
+                >
+                    Rezerwacja została zapisana!
+                </Notification>
+            )}
+
+            {error && (
+                <Notification
+                    icon={<IconX size="1.1rem" />}
+                    color="red"
+                    title="Błąd"
+                    onClose={() => setError(null)}
+                >
+                    {error}
+                </Notification>
+            )}
+        </Box>
     );
 };
