@@ -82,11 +82,13 @@ export const ReservationForm = ({
 
             let message: string | null = null;
 
-            try {
-                const err = await error.response.json();
-                message = err?.message;
-            } catch {
-                message = null;
+            if (error instanceof Response) {
+                try {
+                    const err = await error.json();
+                    message = err?.message;
+                } catch {
+                    message = null;
+                }
             }
 
             setError(message ?? "Wystąpił błąd podczas rezerwacji.");
