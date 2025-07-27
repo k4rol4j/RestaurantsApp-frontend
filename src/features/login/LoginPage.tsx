@@ -37,7 +37,7 @@ export const LoginPage = () => {
     const handleLogin = async () => {
         try {
             await login(form.values.email, form.values.password);
-            navigate('/reservations');
+            navigate('/reservations', { replace: true });
         } catch (error: any) {
             const status = error?.response?.status;
 

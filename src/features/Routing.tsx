@@ -42,7 +42,7 @@ const privateRoutes: RouteObject[] = [
             },
             {
                 path: '*',
-                element: <Navigate to="/reservations" replace />  // Przekierowanie do strony głównej, jeśli trasa nie istnieje
+                element: <Navigate to="/reservations" replace />
             },
             {
                 path: 'search-location',
@@ -61,7 +61,7 @@ export const Routing = () => {
     }
 
     const routes = isLogged ? privateRoutes : publicRoutes;
-    console.log('Routing to:', routes);  // Dodaj logowanie tras
+    console.log('Routing to:', routes);
 
     return useRoutes(routes);
 };

@@ -1,8 +1,16 @@
-import Cookies from "universal-cookie";
+import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
-export const useIsLogged = () => {
-    const cookies = new Cookies();
-    const isLogged = cookies.get('is-logged') !== undefined;
-    console.log('isLogged:', isLogged);  // Dodaj logowanie
+export const useIsLogged = (): boolean | undefined => {
+    const [isLogged, setIsLogged] = useState<boolean|undefined>(undefined);
+
+    useEffect(() => {
+        fetch(`${API_URL}/auth/me`, {
+            credentials: 'include',
+        })
+            .then(res => setIsLogged(res.ok))
+            .catch(() => setIsLogged(false));
+    }, []);
+
     return isLogged;
 };
