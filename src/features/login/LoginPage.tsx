@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import {
     Button,
     Stack,
@@ -16,10 +16,18 @@ import { register } from '../register/api/register.ts';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconAt, IconLock } from '@tabler/icons-react';
+import {useIsLogged} from "../../hooks/useIsLogged.ts";
 
 export const LoginPage = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
     const navigate = useNavigate();
+    const isLogged = useIsLogged();
+
+    useEffect(() => {
+        if (isLogged) {
+                navigate('/reservations', { replace: true });
+            }
+        }, [isLogged, navigate]);
 
     const form = useForm({
         initialValues: {
