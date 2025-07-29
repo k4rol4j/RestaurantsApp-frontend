@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconAt, IconLock } from '@tabler/icons-react';
 import {useIsLogged} from "../../hooks/useIsLogged.ts";
+import {API_URL} from "../../config.ts";
 
 export const LoginPage = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -53,9 +54,20 @@ export const LoginPage = () => {
     const handleLogin = async () => {
         try {
             await login(form.values.email, form.values.password);
-            setTimeout(() => {
+
+            const res = await fetch(`${API_URL}/auth/me`, {
+                credentials: 'include',
+            });
+
+            if (res.ok) {
                 navigate('/reservations', { replace: true });
-            }, 200);
+            } else {
+                notifications.show({
+                    title: 'Błąd logowania',
+                    message: 'Nie udało się potwierdzić logowania. Spróbuj ponownie.',
+                    color: 'red',
+                });
+            }
         } catch (error: any) {
             const status = error?.response?.status;
 
@@ -71,6 +83,7 @@ export const LoginPage = () => {
             });
         }
     };
+
 
     const handleRegister = async () => {
         try {
