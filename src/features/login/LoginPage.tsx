@@ -8,7 +8,7 @@ import {
     Container,
     Paper,
     Title,
-    Box,
+    Box, Loader, Center,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { login } from './api/login';
@@ -23,11 +23,19 @@ export const LoginPage = () => {
     const navigate = useNavigate();
     const isLogged = useIsLogged();
 
+    if (isLogged === undefined) {
+        return (
+            <Center h="100vh">
+                <Loader />
+            </Center>
+        );
+    }
+
     useEffect(() => {
-        if (isLogged) {
-                navigate('/reservations', { replace: true });
-            }
-        }, [isLogged, navigate]);
+        if (isLogged === true) {
+            navigate('/reservations', { replace: true });
+        }
+    }, [isLogged, navigate]);
 
     const form = useForm({
         initialValues: {
@@ -45,7 +53,9 @@ export const LoginPage = () => {
     const handleLogin = async () => {
         try {
             await login(form.values.email, form.values.password);
-            navigate('/reservations', { replace: true });
+            setTimeout(() => {
+                navigate('/reservations', { replace: true });
+            }, 200);
         } catch (error: any) {
             const status = error?.response?.status;
 
