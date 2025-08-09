@@ -1,5 +1,5 @@
 import {BrowserRouter} from "react-router-dom";
-import {Routing} from "./features/Routing.tsx";
+import {Routing} from "./features/routing/Routing.tsx";
 import '@mantine/core/styles.css';
 import {createTheme, MantineProvider} from "@mantine/core";
 import {Notifications} from "@mantine/notifications";
