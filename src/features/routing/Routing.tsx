@@ -10,10 +10,8 @@ import { RestaurantSearchByLocation } from '../reservations/RestaurantSearchByLo
 
 export const Routing = () => {
     const routes = useRoutes([
-        // public
         { path: '/login', element: <RedirectIfAuthed /> },
 
-        // private (chronione całe gniazdo przez RequireAuth + Outlet)
         {
             path: '/',
             element: <Layout />,
@@ -32,7 +30,8 @@ export const Routing = () => {
                 { path: '*', element: <Navigate to="/reservations" replace /> },
             ],
         },
-        { path: '*', element: <Navigate to="/login' " replace /> },
+
+        { path: '*', element: <Navigate to="/login" replace /> },
     ]);
 
     return routes;

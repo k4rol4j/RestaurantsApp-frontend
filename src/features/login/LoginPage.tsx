@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useState } from 'react';
 import {
     Button,
     Stack,
@@ -8,35 +8,19 @@ import {
     Container,
     Paper,
     Title,
-    Box, Loader, Center,
+    Box,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { login } from './api/login';
-import { register } from '../register/api/register.ts';
+import { register } from '../register/api/register';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconAt, IconLock } from '@tabler/icons-react';
-import {useIsLogged} from "../../hooks/useIsLogged.ts";
-import {API_URL} from "../../config.ts";
+import { API_URL } from '../../config';
 
 export const LoginPage = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
     const navigate = useNavigate();
-    const isLogged = useIsLogged();
-
-    if (isLogged === undefined) {
-        return (
-            <Center h="100vh">
-                <Loader />
-            </Center>
-        );
-    }
-
-    useEffect(() => {
-        if (isLogged === true) {
-            navigate('/reservations', { replace: true });
-        }
-    }, [isLogged, navigate]);
 
     const form = useForm({
         initialValues: {
@@ -55,6 +39,7 @@ export const LoginPage = () => {
         try {
             await login(form.values.email, form.values.password);
 
+            // Po zalogowaniu potwierdź sesję (JWT w cookie) i dopiero wtedy przekieruj
             const res = await fetch(`${API_URL}/auth/me`, {
                 credentials: 'include',
             });
@@ -70,7 +55,6 @@ export const LoginPage = () => {
             }
         } catch (error: any) {
             const status = error?.response?.status;
-
             const message =
                 status === 401
                     ? 'Nieprawidłowy email lub hasło'
@@ -84,7 +68,6 @@ export const LoginPage = () => {
         }
     };
 
-
     const handleRegister = async () => {
         try {
             await register(form.values.email, form.values.password);
@@ -96,7 +79,6 @@ export const LoginPage = () => {
             setTab('login');
         } catch (error: any) {
             const status = error?.response?.status;
-
             const message =
                 status === 409
                     ? 'Użytkownik z takim emailem już istnieje'
