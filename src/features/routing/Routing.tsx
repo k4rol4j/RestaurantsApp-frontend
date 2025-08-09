@@ -16,10 +16,10 @@ export const Routing = () => {
             path: '/',
             element: <Layout />,
             children: [
-                { index: true, element: <Navigate to="/reservations" replace /> },
                 {
                     element: <RequireAuth />,
                     children: [
+                        { index: true, element: <Navigate to="/reservations" replace /> },
                         { path: 'reservations', element: <RestaurantsList /> },
                         { path: 'reservations/my', element: <MyReservations /> },
                         { path: 'reservations/:id', element: <RestaurantDetails /> },
@@ -27,7 +27,7 @@ export const Routing = () => {
                         { path: 'search-location', element: <RestaurantSearchByLocation /> },
                     ],
                 },
-                { path: '*', element: <Navigate to="/reservations" replace /> },
+                { path: '*', element: <Navigate to="/login" replace /> },
             ],
         },
 
