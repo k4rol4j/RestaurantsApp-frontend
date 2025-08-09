@@ -1,39 +1,51 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API_URL } from '../config';
 
 export const useIsLogged = (): boolean | undefined => {
     const [isLogged, setIsLogged] = useState<boolean | undefined>(undefined);
+    const abortRef = useRef<AbortController | null>(null);
+    const inFlight = useRef(false);
 
     useEffect(() => {
         let cancelled = false;
-        const controller = new AbortController();
+        abortRef.current?.abort();
+        abortRef.current = new AbortController();
 
-        const probe = async (retried = false) => {
-            try {
-                const res = await fetch(`${API_URL}/auth/me`, {
-                    credentials: 'include',
-                    signal: controller.signal,
-                });
+        const tries = [0, 200, 400, 800, 1200]; // 5 prób, ~2.6s max
+        const run = async () => {
+            if (inFlight.current) return;
+            inFlight.current = true;
 
+            for (let i = 0; i < tries.length; i++) {
                 if (cancelled) return;
+                if (tries[i]) await new Promise(r => setTimeout(r, tries[i]));
 
-                if (res.ok) {
-                    setIsLogged(true);
-                } else if (!retried) {
-                    setTimeout(() => probe(true), 250);
-                } else {
-                    setIsLogged(false);
+                try {
+                    const res = await fetch(`${API_URL}/auth/me`, {
+                        credentials: 'include',
+                        signal: abortRef.current?.signal,
+                        cache: 'no-store',
+                    });
+                    if (cancelled) return;
+
+                    if (res.ok) {
+                        setIsLogged(true);
+                        inFlight.current = false;
+                        return;
+                    }
+                } catch {
+                    if (cancelled) return;
                 }
-            } catch {
-                if (!cancelled) setIsLogged(false);
             }
+            if (!cancelled) setIsLogged(false);
+            inFlight.current = false;
         };
-
-        probe();
+        setIsLogged(undefined);
+        run();
 
         return () => {
             cancelled = true;
-            controller.abort();
+            abortRef.current?.abort();
         };
     }, []);
 

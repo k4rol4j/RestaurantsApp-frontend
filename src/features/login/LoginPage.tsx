@@ -38,7 +38,7 @@ export const LoginPage = () => {
     const handleLogin = async () => {
         try {
             await login(form.values.email, form.values.password);
-
+            sessionStorage.setItem('justLoggedIn', '1');
             // Po zalogowaniu potwierdź sesję (JWT w cookie) i dopiero wtedy przekieruj
             const res = await fetch(`${API_URL}/auth/me`, {
                 credentials: 'include',
