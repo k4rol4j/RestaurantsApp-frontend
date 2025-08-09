@@ -12,11 +12,8 @@ export default function RequireAuth() {
             </Center>
         );
     }
-
     if (!isLogged) {
         return <Navigate to="/login" replace />;
     }
-    sessionStorage.removeItem('justLoggedIn');
-
     return <Outlet />;
 }

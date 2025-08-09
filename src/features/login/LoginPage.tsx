@@ -16,7 +16,6 @@ import { register } from '../register/api/register';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconAt, IconLock } from '@tabler/icons-react';
-import { API_URL } from '../../config';
 
 export const LoginPage = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -38,21 +37,13 @@ export const LoginPage = () => {
     const handleLogin = async () => {
         try {
             await login(form.values.email, form.values.password);
-            sessionStorage.setItem('justLoggedIn', '1');
-            // Po zalogowaniu potwierdź sesję (JWT w cookie) i dopiero wtedy przekieruj
-            const res = await fetch(`${API_URL}/auth/me`, {
-                credentials: 'include',
-            });
 
-            if (res.ok) {
-                navigate('/reservations', { replace: true });
-            } else {
-                notifications.show({
-                    title: 'Błąd logowania',
-                    message: 'Nie udało się potwierdzić logowania. Spróbuj ponownie.',
-                    color: 'red',
-                });
-            }
+            // Flaga, że jesteśmy świeżo po logowaniu
+            sessionStorage.setItem('justLoggedIn', '1');
+
+            // Od razu przekierowanie, bez czekania na /auth/me
+            navigate('/reservations', { replace: true });
+
         } catch (error: any) {
             const status = error?.response?.status;
             const message =
@@ -67,6 +58,7 @@ export const LoginPage = () => {
             });
         }
     };
+
 
     const handleRegister = async () => {
         try {
