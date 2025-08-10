@@ -1,4 +1,3 @@
-// ReservationForm.tsx (wersja z tłumaczeniem dni tygodnia)
 import {
     Button,
     NumberInput,
@@ -76,23 +75,10 @@ export const ReservationForm = ({
             await makeReservation({ restaurantId, date, time, people });
             setSuccess(true);
             setError(null);
-        } catch (error) {
+        } catch (e: any) {
             console.error("Błąd rezerwacji:", error);
             setSuccess(false);
-
-            let message: string | null = null;
-
-            if (error instanceof Response) {
-                try {
-                    const err = await error.json();
-                    message = err?.message;
-                } catch {
-                    message = null;
-                }
-            }
-
-            setError(message ?? "Wystąpił błąd podczas rezerwacji.");
-        }
+            setError(e?.message || 'Wystąpił błąd podczas rezerwacji');
     };
 
     return (
@@ -161,4 +147,4 @@ export const ReservationForm = ({
             )}
         </Box>
     );
-};
+}};
