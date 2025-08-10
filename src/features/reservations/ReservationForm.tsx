@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
     Button,
     NumberInput,
@@ -7,19 +8,20 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconCheck, IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
 import { makeReservation } from "./api/reservations";
 import dayjs from "dayjs";
-import 'dayjs/locale/pl';
-dayjs.locale('pl');
+import "dayjs/locale/pl";
+dayjs.locale("pl");
 
 const generateTimeSlots = (open: string, close: string, stepMinutes = 30) => {
-    const slots = [];
-    let [h, m] = open.split(":" as const).map(Number);
-    const [endH, endM] = close.split(":" as const).map(Number);
+    const slots: { value: string; label: string }[] = [];
+    let [h, m] = open.split(":").map(Number);
+    const [endH, endM] = close.split(":").map(Number);
 
     while (h < endH || (h === endH && m < endM)) {
-        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        const timeStr = `${h.toString().padStart(2, "0")}:${m
+            .toString()
+            .padStart(2, "0")}`;
         slots.push({ value: timeStr, label: timeStr });
         m += stepMinutes;
         if (m >= 60) {
@@ -30,22 +32,24 @@ const generateTimeSlots = (open: string, close: string, stepMinutes = 30) => {
     return slots;
 };
 
-export const ReservationForm = ({
-                                    restaurantId,
-                                    restaurant,
-                                }: {
+export const ReservationForm: React.FC<{
     restaurantId: number;
     restaurant: any;
-}) => {
+}> = ({ restaurantId, restaurant }) => {
     const [date, setDate] = useState<string>("");
     const [time, setTime] = useState("");
     const [people, setPeople] = useState<number>(2);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
+    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>(
+        []
+    );
 
     useEffect(() => {
-        if (!restaurant.openingHours || !date) return;
+        if (!restaurant?.openingHours || !date) {
+            setTimeSlots([]);
+            return;
+        }
 
         const plToEnDays: Record<string, string> = {
             "poniedziałek": "monday",
@@ -59,13 +63,15 @@ export const ReservationForm = ({
 
         const plDay = dayjs(date).format("dddd").toLowerCase();
         const day = plToEnDays[plDay];
-        console.log("DEBUG → dzień tygodnia:", plDay, "→", day);
 
-        const hours = JSON.parse(restaurant.openingHours)[day];
-        console.log("DEBUG → godziny dla dnia:", hours);
-        if (hours) {
-            setTimeSlots(generateTimeSlots(hours.open, hours.close));
-        } else {
+        try {
+            const hours = JSON.parse(restaurant.openingHours)[day];
+            if (hours) {
+                setTimeSlots(generateTimeSlots(hours.open, hours.close));
+            } else {
+                setTimeSlots([]);
+            }
+        } catch {
             setTimeSlots([]);
         }
     }, [restaurant, date]);
@@ -76,10 +82,14 @@ export const ReservationForm = ({
             setSuccess(true);
             setError(null);
         } catch (e: any) {
-            console.error("Błąd rezerwacji:", error);
+            console.error("Błąd rezerwacji:", e);
             setSuccess(false);
-            setError(e?.message || 'Wystąpił błąd podczas rezerwacji');
+            setError(e?.message || "Wystąpił błąd podczas rezerwacji.");
+        }
     };
+
+    const isDisabled =
+        !date || !time || !people || typeof people !== "number" || people < 1;
 
     return (
         <Box
@@ -109,6 +119,8 @@ export const ReservationForm = ({
                 value={time}
                 onChange={(val) => setTime(val ?? "")}
                 disabled={timeSlots.length === 0}
+                searchable
+                nothingFoundMessage="Brak godzin"
             />
 
             <NumberInput
@@ -116,13 +128,13 @@ export const ReservationForm = ({
                 min={1}
                 value={people}
                 onChange={(value) => {
-                    if (typeof value === "number") {
-                        setPeople(value);
-                    }
+                    if (typeof value === "number") setPeople(value);
                 }}
             />
 
-            <Button onClick={handleSubmit}>Rezerwuj</Button>
+            <Button onClick={handleSubmit} disabled={isDisabled}>
+                Rezerwuj
+            </Button>
 
             {success && (
                 <Notification
@@ -130,6 +142,7 @@ export const ReservationForm = ({
                     color="teal"
                     title="Sukces"
                     onClose={() => setSuccess(false)}
+                    mt="sm"
                 >
                     Rezerwacja została zapisana!
                 </Notification>
@@ -141,10 +154,11 @@ export const ReservationForm = ({
                     color="red"
                     title="Błąd"
                     onClose={() => setError(null)}
+                    mt="sm"
                 >
                     {error}
                 </Notification>
             )}
         </Box>
     );
-}};
+};

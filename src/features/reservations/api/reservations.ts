@@ -54,7 +54,7 @@ export const makeReservation = async ({
                                       }: {
     restaurantId: number;
     date: string;
-    time: string; 
+    time: string;
     people: number;
 }) => {
     return api
