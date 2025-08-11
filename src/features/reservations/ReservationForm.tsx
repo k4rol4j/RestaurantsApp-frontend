@@ -9,6 +9,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { makeReservation } from "./api/reservations";
+import { getFreeTables } from "./api/tables"; // NOWE
 import dayjs from "dayjs";
 import "dayjs/locale/pl";
 dayjs.locale("pl");
@@ -44,6 +45,20 @@ export const ReservationForm: React.FC<{
     const [error, setError] = useState<string | null>(null);
     const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
 
+    // NOWE: dostępność stolików
+    const [freeSummary, setFreeSummary] = useState<string>("");
+    const [checkingFree, setCheckingFree] = useState(false);
+
+    const summarizeTables = (tables: { seats: number }[]) => {
+        const counts = tables.reduce<Record<number, number>>((acc, t) => {
+            acc[t.seats] = (acc[t.seats] || 0) + 1;
+            return acc;
+        }, {});
+        const order = [1, 2, 4, 6, 8];
+        const parts = order.filter(s => counts[s]).map(s => `${counts[s]}×${s}-os.`);
+        return parts.length ? `Dostępne: ${parts.join(", ")}` : "Brak wolnych stolików w tym czasie";
+    };
+
     useEffect(() => {
         if (!restaurant?.openingHours || !date) {
             setTimeSlots([]);
@@ -74,6 +89,39 @@ export const ReservationForm: React.FC<{
             setTimeSlots([]);
         }
     }, [restaurant, date]);
+
+    // NOWE: odświeżanie dostępności stolików
+    useEffect(() => {
+        const canFetch = restaurantId && date && time && durationMinutes;
+        if (!canFetch) {
+            setFreeSummary("");
+            return;
+        }
+
+        let cancelled = false;
+        (async () => {
+            try {
+                setCheckingFree(true);
+                const free = await getFreeTables({
+                    restaurantId,
+                    date,
+                    time,
+                    durationMinutes,
+                });
+                if (!cancelled) {
+                    setFreeSummary(summarizeTables(free));
+                }
+            } catch {
+                if (!cancelled) {
+                    setFreeSummary("Nie udało się pobrać dostępności stolików");
+                }
+            } finally {
+                if (!cancelled) setCheckingFree(false);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [restaurantId, date, time, durationMinutes]);
 
     const handleSubmit = async () => {
         try {
@@ -132,7 +180,7 @@ export const ReservationForm: React.FC<{
             />
 
             <Select
-                label="Czas trwania"
+                label="Przewidywany czas trwania"
                 placeholder="Wybierz czas trwania"
                 data={[
                     { value: "30", label: "30 minut" },
@@ -144,6 +192,12 @@ export const ReservationForm: React.FC<{
                 value={String(durationMinutes)}
                 onChange={(val) => setDurationMinutes(val ? parseInt(val) : 90)}
             />
+
+            {(date && time) && (
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                    {checkingFree ? "Sprawdzam dostępność stolików…" : freeSummary}
+                </div>
+            )}
 
             <Button onClick={handleSubmit} disabled={isDisabled}>
                 Rezerwuj

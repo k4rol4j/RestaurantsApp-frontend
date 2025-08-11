@@ -57,7 +57,7 @@ export const makeReservation = async ({
     date: string;
     time: string;
     people: number;
-    durationMinutes?: number;
+    durationMinutes: number;
 }) => {
     return api
         .post(`${API_URL}/reservations`, {
