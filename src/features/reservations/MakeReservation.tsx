@@ -94,7 +94,7 @@ export const MakeReservation = () => {
                         </Notification>
                     )}
                     <Group justify="space-between" mt="lg">
-                        <Button variant="default" onClick={() => setFormData({ name: "", guests: 1, date: "", restaurantId: null })}>
+                        <Button variant="default" onClick={() => setFormData({ name: "", guests: 1, date: "", restaurantId: null , durationMinutes: 90})}>
                             Reset
                         </Button>
                         <Button onClick={handleSubmit}>Rezerwuj</Button>
