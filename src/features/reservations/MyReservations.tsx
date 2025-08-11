@@ -4,7 +4,6 @@ import {
 } from "@mantine/core";
 import {deleteReservation, getMyReservations} from "./api/reservations";
 import { addReview } from "./api/restaurants";
-
 type ReservationTable = {
     table: { id: number; name: string | null; seats: number };
 };
@@ -40,18 +39,9 @@ const formatTables = (tables?: ReservationTable[]) => {
     return names ? `${parts.join(", ")} (${names})` : parts.join(", ");
 };
 
-const handleDelete = async (id: number) => {
-    if (!window.confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
-    try {
-        await deleteReservation(id);
-        await getMyReservations(); // odświeżenie listy po usunięciu
-    } catch (err) {
-        console.error("Błąd anulowania rezerwacji", err);
-    }
-};
-
 export const MyReservations = () => {
     const [reservations, setReservations] = useState<Reservation[]>([]);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
     const [comment, setComment] = useState("");
     const [rating, setRating] = useState(0);
     const [reviewingId, setReviewingId] = useState<number | null>(null);
@@ -72,6 +62,20 @@ export const MyReservations = () => {
         } catch (err) {
             console.error("Błąd pobierania rezerwacji", err);
         }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!window.confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
+        try {
+            setDeletingId(id);
+            await deleteReservation(id);
+            setReservations((prev) => prev.filter(r => r.id !== id));
+            await fetchReservations();
+        } catch (err) {
+            console.error("Błąd anulowania rezerwacji", err);
+        } finally {
+        setDeletingId(null);                           // NEW
+    }
     };
 
     useEffect(() => {
@@ -123,6 +127,8 @@ export const MyReservations = () => {
                             color="red"
                             size="xs"
                             onClick={() => handleDelete(res.id)}
+                            loading={deletingId === res.id}   // NEW
+                            disabled={deletingId === res.id}  // NEW
                         >
                             Anuluj rezerwację
                         </Button>

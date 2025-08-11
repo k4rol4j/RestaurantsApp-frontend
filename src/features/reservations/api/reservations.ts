@@ -17,21 +17,10 @@ async function dataFrom(response: Response) {
 function extractMessage(data: any, status: number) {
     if (!data) return `Błąd (${status})`;
     if (typeof data === "string") return data;
-
     const msg = Array.isArray(data?.message)
         ? data.message.join(", ")
         : data?.message || data?.error;
-
     return msg || `Błąd (${status})`;
-}
-
-export async function deleteReservation(id: number) {
-    const res = await fetch(`${API_URL}/reservations/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-    });
-    if (!res.ok) throw new Error('Błąd usuwania rezerwacji');
-    return res.json();
 }
 
 const api = ky.create({
@@ -51,10 +40,12 @@ const api = ky.create({
     },
 });
 
+//restauracje
 export const listRestaurants = async () => {
-    return api.get(`${API_URL}/restaurants`).json<RestaurantsType>();
+    return api.get(`${API_URL}/restaurants`, { cache: "no-store" }).json<RestaurantsType>();
 };
 
+//rezerwacje
 export const makeReservation = async ({
                                           restaurantId,
                                           date,
@@ -76,5 +67,17 @@ export const makeReservation = async ({
 };
 
 export const getMyReservations = async () => {
-    return api.get(`${API_URL}/reservations/my`).json();
+    // Upewnij się, że ścieżka zgadza się z backendem: /reservations/my vs /reservations/mine
+    return api.get(`${API_URL}/reservations/my`, { cache: "no-store" }).json();
+};
+
+export const deleteReservation = async (id: number) => {
+    // używamy ky, dziedziczy credentials i obsługę błędów
+    // backend może zwrócić { ok: true } lub 204 – oba będą OK
+    const res = await api.delete(`${API_URL}/reservations/${id}`);
+    try {
+        return await res.json();
+    } catch {
+        return { ok: true };
+    }
 };
