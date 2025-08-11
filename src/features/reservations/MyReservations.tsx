@@ -118,6 +118,14 @@ export const MyReservations = () => {
                         <Text size="sm" mt={4} c="dimmed">
                             Stoliki: {formatTables(res.tables)}
                         </Text>
+                        <Button
+                            mt="sm"
+                            color="red"
+                            size="xs"
+                            onClick={() => handleDelete(res.id)}
+                        >
+                            Anuluj rezerwację
+                        </Button>
                     </Card>
                 ))
             )}
@@ -169,14 +177,6 @@ export const MyReservations = () => {
                                 Dodaj opinię
                             </Button>
                         )}
-                        <Button
-                            mt="sm"
-                            color="red"
-                            size="xs"
-                            onClick={() => handleDelete(res.id)}
-                        >
-                            Anuluj rezerwację
-                        </Button>
                     </Card>
                 ))
             )}
