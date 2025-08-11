@@ -39,11 +39,10 @@ export const ReservationForm: React.FC<{
     const [date, setDate] = useState<string>("");
     const [time, setTime] = useState("");
     const [people, setPeople] = useState<number>(2);
+    const [durationMinutes, setDurationMinutes] = useState<number>(90);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>(
-        []
-    );
+    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
 
     useEffect(() => {
         if (!restaurant?.openingHours || !date) {
@@ -78,7 +77,7 @@ export const ReservationForm: React.FC<{
 
     const handleSubmit = async () => {
         try {
-            await makeReservation({ restaurantId, date, time, people });
+            await makeReservation({ restaurantId, date, time, people, durationMinutes });
             setSuccess(true);
             setError(null);
         } catch (e: any) {
@@ -130,6 +129,20 @@ export const ReservationForm: React.FC<{
                 onChange={(value) => {
                     if (typeof value === "number") setPeople(value);
                 }}
+            />
+
+            <Select
+                label="Czas trwania"
+                placeholder="Wybierz czas trwania"
+                data={[
+                    { value: "30", label: "30 minut" },
+                    { value: "60", label: "1 godzina" },
+                    { value: "90", label: "1,5 godziny" },
+                    { value: "120", label: "2 godziny" },
+                    { value: "180", label: "3 godziny" },
+                ]}
+                value={String(durationMinutes)}
+                onChange={(val) => setDurationMinutes(val ? parseInt(val) : 90)}
             />
 
             <Button onClick={handleSubmit} disabled={isDisabled}>

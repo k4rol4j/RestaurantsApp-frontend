@@ -51,15 +51,17 @@ export const makeReservation = async ({
                                           date,
                                           time,
                                           people,
+                                          durationMinutes,
                                       }: {
     restaurantId: number;
     date: string;
     time: string;
     people: number;
+    durationMinutes?: number;
 }) => {
     return api
         .post(`${API_URL}/reservations`, {
-            json: { restaurantId, date, time, people },
+            json: { restaurantId, date, time, people, durationMinutes },
         })
         .json();
 };
