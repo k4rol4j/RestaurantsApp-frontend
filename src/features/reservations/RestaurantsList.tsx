@@ -17,7 +17,6 @@ import { DateInput, TimeInput } from "@mantine/dates";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Restaurant } from "./hooks/useMakeReservation.ts";
-import { searchRestaurants } from "./api/restaurants.ts";
 import { listRestaurants } from "./api/reservations.ts";
 import { getFavorites, toggleFavorite } from "./api/favorites.ts";
 import { API_URL } from "../../config.ts";
@@ -147,25 +146,44 @@ export const RestaurantsList = () => {
         setLoading(true);
         try {
             const filters: FilterParams = {};
-            if (cuisineFilter) filters.cuisine = cuisineFilter;
+            if (nameFilter.trim()) filters.name = nameFilter.trim();
             if (selectedCity) {
                 filters.location = selectedCity.label;
                 filters.latitude = selectedCity.latitude;
                 filters.longitude = selectedCity.longitude;
                 filters.radius = radius;
             }
-            if (nameFilter) filters.name = nameFilter;
-            if (sortByDistance) filters.sortByDistance = true;
 
-            setLocationFilters(filters);
+            if (selectedDate) {
+                filters.date = toYMD(selectedDate);      // lokalny YYYY-MM-DD
+            }
+            if (selectedTime) {
+                filters.time = selectedTime.slice(0, 5); // zawsze "HH:mm"
+            }
+            if (people && people > 0) {
+                filters.partySize = people;
+            }
 
-            const filtered = await searchRestaurants(filters);
-            setRestaurants(filtered);
-        } catch (error) {
-            console.error("Błąd wyszukiwania restauracji:", error);
+            setLocationFilters({
+                location: filters.location,
+                latitude: filters.latitude,
+                longitude: filters.longitude,
+                radius: filters.radius,
+            });
+
+            const res = await fetch(`${API_URL}/restaurants/filter`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(filters),
+            });
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            setRestaurants(await res.json());
+        } catch (e) {
+            console.error("Błąd szukania", e);
             setRestaurants([]);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const toYMD = (d: Date) =>
@@ -180,16 +198,6 @@ export const RestaurantsList = () => {
             if (sortOrder) filters.sortOrder = sortOrder;
             if (sortByDistance) filters.sortByDistance = true;
 
-            // Nowe: dostępność
-            if (selectedDate) {
-                filters.date = toYMD(selectedDate);      // lokalny YYYY-MM-DD
-            }
-            if (selectedTime) {
-                filters.time = selectedTime.slice(0, 5); // zawsze "HH:mm"
-            }
-            if (people && people > 0) {
-                filters.partySize = people;
-            }
             console.log('filters', filters);
 
             const response = await fetch(`${API_URL}/restaurants/filter`, {
