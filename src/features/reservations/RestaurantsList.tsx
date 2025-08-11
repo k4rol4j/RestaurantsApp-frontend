@@ -168,6 +168,9 @@ export const RestaurantsList = () => {
         setLoading(false);
     };
 
+    const toYMD = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
     const handleFilter = async () => {
         setLoading(true);
         try {
@@ -179,14 +182,15 @@ export const RestaurantsList = () => {
 
             // Nowe: dostępność
             if (selectedDate) {
-                filters.date = selectedDate.toISOString().slice(0, 10);
+                filters.date = toYMD(selectedDate);      // lokalny YYYY-MM-DD
             }
-            if (selectedTime && /^\d{2}:\d{2}$/.test(selectedTime)) {
-                filters.time = selectedTime;
+            if (selectedTime) {
+                filters.time = selectedTime.slice(0, 5); // zawsze "HH:mm"
             }
             if (people && people > 0) {
                 filters.partySize = people;
             }
+            console.log('filters', filters);
 
             const response = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
@@ -256,7 +260,7 @@ export const RestaurantsList = () => {
                     <TimeInput
                         label="Godzina"
                         value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.currentTarget.value)}
+                        onChange={(e) => setSelectedTime(e.currentTarget.value.slice(0, 5))}
                     />
                     <NumberInput
                         label="Liczba osób"
@@ -321,6 +325,7 @@ export const RestaurantsList = () => {
                             setSelectedTime("19:00");
                             setPeople(2);
                             fetchRestaurants();
+                            setLocationFilters(null);
                             fetchFavorites();
                         }}
                     >
