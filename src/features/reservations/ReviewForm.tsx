@@ -1,97 +1,62 @@
-// ReservationForm.tsx (wersja z tłumaczeniem dni tygodnia)
+import { useState } from "react";
 import {
-    Button,
-    NumberInput,
     Box,
+    Button,
     Notification,
     Select,
+    Textarea,
 } from "@mantine/core";
-import { DatePickerInput } from "@mantine/dates";
 import { IconCheck, IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { makeReservation } from "./api/reservations";
-import dayjs from "dayjs";
-import 'dayjs/locale/pl';
-dayjs.locale('pl');
+import {API_URL} from "../../config.ts";
 
-const generateTimeSlots = (open: string, close: string, stepMinutes = 30) => {
-    const slots = [];
-    let [h, m] = open.split(":" as const).map(Number);
-    const [endH, endM] = close.split(":" as const).map(Number);
 
-    while (h < endH || (h === endH && m < endM)) {
-        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        slots.push({ value: timeStr, label: timeStr });
-        m += stepMinutes;
-        if (m >= 60) {
-            h += 1;
-            m -= 60;
-        }
-    }
-    return slots;
-};
-
-export const ReservationForm = ({
-                                    restaurantId,
-                                    restaurant,
-                                }: {
+export const ReviewForm = ({
+                               restaurantId,
+                               reservationId,
+                           }: {
     restaurantId: number;
-    restaurant: any;
+    reservationId: number;
 }) => {
-    const [date, setDate] = useState<string>("");
-    const [time, setTime] = useState("");
-    const [people, setPeople] = useState<number>(2);
+    const [rating, setRating] = useState<string | null>(null);
+    const [comment, setComment] = useState("");
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
-
-    useEffect(() => {
-        if (!restaurant.openingHours || !date) return;
-
-        const plToEnDays: Record<string, string> = {
-            "poniedziałek": "monday",
-            "wtorek": "tuesday",
-            "środa": "wednesday",
-            "czwartek": "thursday",
-            "piątek": "friday",
-            "sobota": "saturday",
-            "niedziela": "sunday",
-        };
-
-        const plDay = dayjs(date).format("dddd").toLowerCase();
-        const day = plToEnDays[plDay];
-        console.log("DEBUG → dzień tygodnia:", plDay, "→", day);
-
-        const hours = JSON.parse(restaurant.openingHours)[day];
-        console.log("DEBUG → godziny dla dnia:", hours);
-        if (hours) {
-            setTimeSlots(generateTimeSlots(hours.open, hours.close));
-        } else {
-            setTimeSlots([]);
-        }
-    }, [restaurant, date]);
 
     const handleSubmit = async () => {
+        if (!rating) {
+            setError("Wybierz ocenę");
+            return;
+        }
+        if (comment.trim().length < 5) {
+            setError("Komentarz musi mieć min. 5 znaków");
+            return;
+        }
+
         try {
-            await makeReservation({ restaurantId, date, time, people });
-            setSuccess(true);
-            setError(null);
-        } catch (error) {
-            console.error("Błąd rezerwacji:", error);
-            setSuccess(false);
+            const res = await fetch(`${API_URL}/restaurants/reviews`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    restaurantId,
+                    reservationId,
+                    rating: Number(rating),
+                    comment: comment.trim(),
+                }),
+            });
 
-            let message: string | null = null;
-
-            if (error instanceof Response) {
-                try {
-                    const err = await error.json();
-                    message = err?.message;
-                } catch {
-                    message = null;
-                }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Błąd dodawania opinii");
             }
 
-            setError(message ?? "Wystąpił błąd podczas rezerwacji.");
+            setSuccess(true);
+            setError(null);
+            setRating(null);
+            setComment("");
+        } catch (e: any) {
+            setSuccess(false);
+            setError(e.message || "Błąd dodawania opinii");
         }
     };
 
@@ -105,38 +70,29 @@ export const ReservationForm = ({
                 marginTop: 24,
             }}
         >
-            <DatePickerInput
-                label="Data"
-                placeholder="Wybierz datę"
-                value={date ? new Date(date) : null}
-                onChange={(value) => {
-                    if (value) setDate(dayjs(value).format("YYYY-MM-DD"));
-                }}
-                valueFormat="YYYY-MM-DD"
-                locale="pl"
-            />
-
             <Select
-                label="Godzina"
-                placeholder="Wybierz godzinę"
-                data={timeSlots}
-                value={time}
-                onChange={(val) => setTime(val ?? "")}
-                disabled={timeSlots.length === 0}
+                label="Ocena"
+                placeholder="Wybierz ocenę"
+                data={[
+                    { value: "1", label: "1 - Bardzo źle" },
+                    { value: "2", label: "2 - Słabo" },
+                    { value: "3", label: "3 - Średnio" },
+                    { value: "4", label: "4 - Dobrze" },
+                    { value: "5", label: "5 - Świetnie" },
+                ]}
+                value={rating}
+                onChange={setRating}
             />
 
-            <NumberInput
-                label="Liczba osób"
-                min={1}
-                value={people}
-                onChange={(value) => {
-                    if (typeof value === "number") {
-                        setPeople(value);
-                    }
-                }}
+            <Textarea
+                label="Komentarz"
+                placeholder="Napisz swoją opinię..."
+                value={comment}
+                onChange={(e) => setComment(e.currentTarget.value)}
+                minRows={3}
             />
 
-            <Button onClick={handleSubmit}>Rezerwuj</Button>
+            <Button onClick={handleSubmit}>Dodaj opinię</Button>
 
             {success && (
                 <Notification
@@ -145,7 +101,7 @@ export const ReservationForm = ({
                     title="Sukces"
                     onClose={() => setSuccess(false)}
                 >
-                    Rezerwacja została zapisana!
+                    Opinia została zapisana!
                 </Notification>
             )}
 

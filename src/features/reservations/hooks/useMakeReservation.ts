@@ -24,6 +24,7 @@ export type MakeReservationValues = {
     guests: number;
     date: string;
     restaurantId: number | null;
+    durationMinutes: number;
 };
 
 export const useMakeReservation = () => {
@@ -33,6 +34,7 @@ export const useMakeReservation = () => {
         guests: 1,
         date: "",
         restaurantId: null,
+        durationMinutes: 90,
     });
 
     const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
@@ -56,13 +58,13 @@ export const useMakeReservation = () => {
         }
 
         try {
-            // Domyślnie ustalamy godzinę na 18:00
             const time = "18:00";
             await makeReservation({
                 restaurantId: formData.restaurantId,
                 date: formData.date,
                 time,
                 people: formData.guests,
+                durationMinutes: 90
             });
             setError(null);
             setSubmitted(true);
