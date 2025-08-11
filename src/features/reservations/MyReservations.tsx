@@ -16,7 +16,7 @@ interface Reservation {
     people: number;
     review?: { id: number };
     restaurant: { id: number; name: string; location: string; cuisine: string };
-    tables?: ReservationTable[]; // 👈 stoliki dołączone z backendu
+    tables?: ReservationTable[];
 }
 
 const formatTables = (tables?: ReservationTable[]) => {

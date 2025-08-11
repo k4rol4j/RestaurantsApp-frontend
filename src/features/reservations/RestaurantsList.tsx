@@ -13,6 +13,7 @@ import {
     MultiSelect,
     Checkbox,
 } from "@mantine/core";
+import { DateInput, TimeInput } from "@mantine/dates";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Restaurant } from "./hooks/useMakeReservation.ts";
@@ -55,13 +56,14 @@ interface FilterParams {
     location?: string;
     name?: string;
     minRating?: number;
-    maxRating?: number;
-    availableDate?: string;
     sortOrder?: "asc" | "desc";
     latitude?: number;
     longitude?: number;
     radius?: number;
     sortByDistance?: boolean;
+    date?: string; // "YYYY-MM-DD"
+    time?: string; // "HH:mm"
+    partySize?: number;
 }
 
 export const RestaurantsList = () => {
@@ -74,7 +76,6 @@ export const RestaurantsList = () => {
     const [cuisines, setCuisines] = useState<string[]>([]);
     const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
-    const [maxRating, setMaxRating] = useState<number | null>(null);
     const [sortByDistance, setSortByDistance] = useState<boolean>(false);
     const [locationFilters, setLocationFilters] = useState<FilterParams | null>(null);
 
@@ -82,6 +83,11 @@ export const RestaurantsList = () => {
     const [selectedCity, setSelectedCity] = useState<typeof cities[0] | null>(null);
     const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [radius, setRadius] = useState<number>(0);
+
+    // Nowe stany dla dostępności
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedTime, setSelectedTime] = useState<string>("19:00");
+    const [people, setPeople] = useState<number>(2);
 
     useEffect(() => {
         fetchRestaurants();
@@ -151,7 +157,6 @@ export const RestaurantsList = () => {
             if (nameFilter) filters.name = nameFilter;
             if (sortByDistance) filters.sortByDistance = true;
 
-            // Zapisujemy ostatnie filtry lokalizacji
             setLocationFilters(filters);
 
             const filtered = await searchRestaurants(filters);
@@ -163,7 +168,6 @@ export const RestaurantsList = () => {
         setLoading(false);
     };
 
-
     const handleFilter = async () => {
         setLoading(true);
         try {
@@ -171,8 +175,18 @@ export const RestaurantsList = () => {
             if (cuisineFilter) filters.cuisine = cuisineFilter;
             if (minRating !== null) filters.minRating = minRating;
             if (sortOrder) filters.sortOrder = sortOrder;
-            if (maxRating !== null) filters.maxRating = maxRating;
             if (sortByDistance) filters.sortByDistance = true;
+
+            // Nowe: dostępność
+            if (selectedDate) {
+                filters.date = selectedDate.toISOString().slice(0, 10);
+            }
+            if (selectedTime && /^\d{2}:\d{2}$/.test(selectedTime)) {
+                filters.time = selectedTime;
+            }
+            if (people && people > 0) {
+                filters.partySize = people;
+            }
 
             const response = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
@@ -191,7 +205,6 @@ export const RestaurantsList = () => {
         setLoading(false);
     };
 
-
     const handleToggleFavorite = async (id: number) => {
         const isFav = favorites.includes(id);
         try {
@@ -204,7 +217,6 @@ export const RestaurantsList = () => {
 
     return (
         <div style={{ width: "100%" }}>
-            {/* ZOSTAWIAMY ISTNIEJĄCY UKŁAD */}
             <Box style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
                 <TextInput
                     label="Nazwa restauracji"
@@ -232,6 +244,28 @@ export const RestaurantsList = () => {
                     max={50}
                     disabled={!selectedCity}
                 />
+
+                {/* NOWE pola dostępności */}
+                <Group grow>
+                    <DateInput
+                        label="Data dostępności"
+                        placeholder="Wybierz datę"
+                        value={selectedDate}
+                        onChange={setSelectedDate}
+                    />
+                    <TimeInput
+                        label="Godzina"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.currentTarget.value)}
+                    />
+                    <NumberInput
+                        label="Liczba osób"
+                        min={1}
+                        value={people}
+                        onChange={(v) => setPeople(typeof v === "number" ? v : 1)}
+                    />
+                </Group>
+
                 <Button onClick={handleSearch} disabled={loading}>
                     {loading ? <Loader size="sm" /> : "Szukaj"}
                 </Button>
@@ -253,15 +287,6 @@ export const RestaurantsList = () => {
                     step={0.5}
                     value={minRating ?? undefined}
                     onChange={(value) => (typeof value === "number" ? setMinRating(value) : setMinRating(null))}
-                />
-                <NumberInput
-                    label="Maksymalna ocena"
-                    placeholder="Podaj ocenę (1-5)"
-                    min={1}
-                    max={5}
-                    step={0.5}
-                    value={maxRating ?? undefined}
-                    onChange={(value) => (typeof value === "number" ? setMaxRating(value) : setMaxRating(null))}
                 />
                 <Select
                     label="Sortuj wg oceny"
@@ -292,6 +317,9 @@ export const RestaurantsList = () => {
                             setSelectedCity(null);
                             setSortOrder(null);
                             setRadius(0);
+                            setSelectedDate(null);
+                            setSelectedTime("19:00");
+                            setPeople(2);
                             fetchRestaurants();
                             fetchFavorites();
                         }}
