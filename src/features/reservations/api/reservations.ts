@@ -25,6 +25,15 @@ function extractMessage(data: any, status: number) {
     return msg || `Błąd (${status})`;
 }
 
+export async function deleteReservation(id: number) {
+    const res = await fetch(`${API_URL}/reservations/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Błąd usuwania rezerwacji');
+    return res.json();
+}
+
 const api = ky.create({
     credentials: "include",
     hooks: {

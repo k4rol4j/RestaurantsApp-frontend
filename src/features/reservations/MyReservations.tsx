@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
     Card, Text, Badge, Stack, Title, Group, Divider, Button, Rating, Textarea,
 } from "@mantine/core";
-import { getMyReservations } from "./api/reservations";
+import {deleteReservation, getMyReservations} from "./api/reservations";
 import { addReview } from "./api/restaurants";
 
 type ReservationTable = {
@@ -38,6 +38,16 @@ const formatTables = (tables?: ReservationTable[]) => {
         .join(", ");
 
     return names ? `${parts.join(", ")} (${names})` : parts.join(", ");
+};
+
+const handleDelete = async (id: number) => {
+    if (!window.confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
+    try {
+        await deleteReservation(id);
+        await getMyReservations(); // odświeżenie listy po usunięciu
+    } catch (err) {
+        console.error("Błąd anulowania rezerwacji", err);
+    }
 };
 
 export const MyReservations = () => {
@@ -159,6 +169,14 @@ export const MyReservations = () => {
                                 Dodaj opinię
                             </Button>
                         )}
+                        <Button
+                            mt="sm"
+                            color="red"
+                            size="xs"
+                            onClick={() => handleDelete(res.id)}
+                        >
+                            Anuluj rezerwację
+                        </Button>
                     </Card>
                 ))
             )}
