@@ -1,34 +1,44 @@
 import { useEffect, useState } from "react";
 import {
-    Card,
-    Text,
-    Badge,
-    Stack,
-    Title,
-    Group,
-    Divider,
-    Button,
-    Rating,
-    Textarea,
+    Card, Text, Badge, Stack, Title, Group, Divider, Button, Rating, Textarea,
 } from "@mantine/core";
 import { getMyReservations } from "./api/reservations";
 import { addReview } from "./api/restaurants";
+
+type ReservationTable = {
+    table: { id: number; name: string | null; seats: number };
+};
 
 interface Reservation {
     id: number;
     date: string;
     time: string;
     people: number;
-    review?: {
-        id: number;
-    };
-    restaurant: {
-        id: number;
-        name: string;
-        location: string;
-        cuisine: string;
-    };
+    review?: { id: number };
+    restaurant: { id: number; name: string; location: string; cuisine: string };
+    tables?: ReservationTable[]; // 👈 stoliki dołączone z backendu
 }
+
+const formatTables = (tables?: ReservationTable[]) => {
+    if (!tables || tables.length === 0) return "—";
+    // zliczamy po liczbie miejsc
+    const counts = tables.reduce<Record<number, number>>((acc, t) => {
+        const s = t.table.seats;
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+    }, {});
+    const parts = Object.entries(counts)
+        .sort((a, b) => Number(b[0]) - Number(a[0])) // 6,4,2,1...
+        .map(([seats, qty]) => `${qty}×${seats}-os.`);
+
+    // nazwy stolików w nawiasie, jeśli są
+    const names = tables
+        .map((t) => t.table.name)
+        .filter(Boolean)
+        .join(", ");
+
+    return names ? `${parts.join(", ")} (${names})` : parts.join(", ");
+};
 
 export const MyReservations = () => {
     const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -68,7 +78,7 @@ export const MyReservations = () => {
             setComment("");
             setRating(0);
             setReviewingId(null);
-            await fetchReservations(); // odświeżenie po dodaniu opinii
+            await fetchReservations();
         } catch (e) {
             console.error("Błąd dodawania opinii", e);
         }
@@ -95,6 +105,9 @@ export const MyReservations = () => {
                         <Text size="sm">
                             {formatDate(res.date)} o {res.time} — {res.people} osób
                         </Text>
+                        <Text size="sm" mt={4} c="dimmed">
+                            Stoliki: {formatTables(res.tables)}
+                        </Text>
                     </Card>
                 ))
             )}
@@ -115,6 +128,9 @@ export const MyReservations = () => {
                         </Text>
                         <Text size="sm">
                             {formatDate(res.date)} o {res.time} — {res.people} osób
+                        </Text>
+                        <Text size="sm" mt={4} c="dimmed">
+                            Stoliki: {formatTables(res.tables)}
                         </Text>
 
                         {res.review ? (
