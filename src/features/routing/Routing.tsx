@@ -7,6 +7,12 @@ import { MyReservations } from '../reservations/MyReservations';
 import { RestaurantDetails } from '../reservations/RestaurantDetails';
 import { Favorites } from '../reservations/Favorites';
 import { RestaurantSearchByLocation } from '../reservations/RestaurantSearchByLocation';
+import OwnerLayout from "../owner/OwnerLayout.tsx";
+import Dashboard from "../owner/pages/Dashboard.tsx";
+import Profile from "../owner/pages/Profile.tsx";
+import Tables from "../owner/pages/Tables.tsx";
+import Reservations from "../owner/pages/Reservations.tsx";
+import RequireOwner from "./RequireOwner.tsx";
 
 export const Routing = () => {
     const routes = useRoutes([
@@ -28,6 +34,22 @@ export const Routing = () => {
                     ],
                 },
                 { path: '*', element: <Navigate to="/login" replace /> },
+            ],
+        },
+        {
+            path: 'owner/:rid',
+            element: <RequireOwner />,
+            children: [
+                {
+                    element: <OwnerLayout />,
+                    children: [
+                        { index: true, element: <Navigate to="dashboard" replace /> },
+                        { path: 'dashboard', element: <Dashboard /> },
+                        { path: 'profile', element: <Profile /> },
+                        { path: 'tables', element: <Tables /> },
+                        { path: 'reservations', element: <Reservations /> },
+                    ],
+                },
             ],
         },
 

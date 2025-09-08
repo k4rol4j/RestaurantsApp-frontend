@@ -155,10 +155,10 @@ export const RestaurantsList = () => {
             }
 
             if (selectedDate) {
-                filters.date = toYMD(selectedDate);      // lokalny YYYY-MM-DD
+                filters.date = toYMD(selectedDate);
             }
             if (selectedTime) {
-                filters.time = selectedTime.slice(0, 5); // zawsze "HH:mm"
+                filters.time = selectedTime.slice(0, 5);
             }
             if (people && people > 0) {
                 filters.partySize = people;
