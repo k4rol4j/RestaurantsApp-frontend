@@ -18,7 +18,6 @@ export const searchRestaurants = async (filters: {
     latitude?: number;
     longitude?: number;
     radius?: number;
-
 }): Promise<Restaurant[]> => {
     try {
         const queryParams = new URLSearchParams();
@@ -26,23 +25,24 @@ export const searchRestaurants = async (filters: {
         if (filters.cuisine && Array.isArray(filters.cuisine)) {
             filters.cuisine.forEach(c => queryParams.append('cuisine', c));
         }
-        if (filters.name) queryParams.append('name', filters.name);
-        if (filters.location) queryParams.append('location', filters.location);
-        if (filters.latitude) queryParams.append('latitude', filters.latitude.toString());
-        if (filters.longitude) queryParams.append('longitude', filters.longitude.toString());
-        if (filters.radius) queryParams.append('radius', filters.radius.toString());
 
-        const response = await fetch(`${API_URL}/restaurants/search?${queryParams}`, {
+        const trimmedName = typeof filters.name === 'string' ? filters.name.trim() : '';
+        if (trimmedName) queryParams.append('name', trimmedName);
+
+        if (filters.location) queryParams.append('location', filters.location);
+        if (typeof filters.latitude === 'number') queryParams.append('latitude', String(filters.latitude));
+        if (typeof filters.longitude === 'number') queryParams.append('longitude', String(filters.longitude));
+        if (typeof filters.radius === 'number') queryParams.append('radius', String(filters.radius));
+
+        const qs = queryParams.toString(); // <-- jawnie
+        const response = await fetch(`${API_URL}/restaurants/search?${qs}`, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
         });
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-
         return await response.json();
     } catch (error) {
         console.error('Błąd podczas wyszukiwania restauracji:', error);
