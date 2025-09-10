@@ -46,3 +46,7 @@ export const unassignTable = (rid: number, reservationId: number, tableId: numbe
 
 export const getDashboard = (rid: number) =>
     api.get(`/restaurants/${rid}/panel/dashboard`).then(r => r.data);
+
+export const myRestaurants = () =>
+    api.get('/restaurants/my').then(r => r.data as { id: number; name: string }[]);
+
