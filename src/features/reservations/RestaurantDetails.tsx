@@ -6,7 +6,10 @@ import {
     Image,
     Badge,
     Stack,
-    Loader, Button, Box,
+    Loader,
+    Button,
+    Box,
+    Table,
 } from "@mantine/core";
 import { ReservationForm } from "./ReservationForm";
 import { ReviewList } from "./ReviewList";
@@ -24,6 +27,18 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 import { Restaurant } from "./hooks/useMakeReservation.ts";
+
+// --- typy lokalne dla menu ---
+type MenuItem = {
+    name: string;
+    price: number;
+    category?: string;
+    description?: string;
+    isAvailable?: boolean;
+};
+
+// rozszerzamy typ restauracji o menu
+type RestaurantWithMenu = Restaurant & { menu?: MenuItem[] };
 
 const customMarker = new L.Icon({
     iconUrl: markerIcon,
@@ -43,7 +58,7 @@ interface Review {
 
 export const RestaurantDetails = () => {
     const { id } = useParams();
-    const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+    const [restaurant, setRestaurant] = useState<RestaurantWithMenu | null>(null);
     const [loading, setLoading] = useState(true);
     const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -51,8 +66,6 @@ export const RestaurantDetails = () => {
         const fetchData = async () => {
             try {
                 const res = await getRestaurantById(Number(id));
-                console.log("DEBUG restaurant:", res);
-                console.log("DEBUG openingHours:", res.openingHours);
                 const rev = await getRestaurantReviews(Number(id));
                 setRestaurant({
                     ...res,
@@ -72,12 +85,34 @@ export const RestaurantDetails = () => {
     if (loading) return <Loader />;
     if (!restaurant) return <Text>Restauracja nie znaleziona</Text>;
 
+    // helper formatowania ceny
+    const formatPrice = (n: number) =>
+        (Number(n) || 0).toFixed(2).replace(".", ",") + " zł";
+
     return (
         <Stack>
-            <Box style={{ height: 250, width: "30%", overflow: "hidden", borderRadius: 12,}} >
-                <Image src={restaurant.imageUrl ?? "https://via.placeholder.com/400x250?text=Brak+zdjęcia"} height={250} fit="cover" radius="md" />
+            <Box
+                style={{
+                    height: 250,
+                    width: "30%",
+                    overflow: "hidden",
+                    borderRadius: 12,
+                }}
+            >
+                <Image
+                    src={
+                        restaurant.imageUrl ??
+                        "https://via.placeholder.com/400x250?text=Brak+zdjęcia"
+                    }
+                    height={250}
+                    fit="cover"
+                    radius="md"
+                />
             </Box>
-            <Text fw={700} size="xl">{restaurant.name}</Text>
+
+            <Text fw={700} size="xl">
+                {restaurant.name}
+            </Text>
             <Badge color="blue">{restaurant.cuisine}</Badge>
             <Text c="dimmed">{restaurant.location}</Text>
 
@@ -102,30 +137,91 @@ export const RestaurantDetails = () => {
                                 attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
-                            <Marker position={[restaurant.latitude, restaurant.longitude]} icon={customMarker}>
+                            <Marker
+                                position={[restaurant.latitude, restaurant.longitude]}
+                                icon={customMarker}
+                            >
                                 <Popup>
                                     <Text fw={700}>{restaurant.name}</Text>
-                                    <Text size="sm" c="dimmed">{restaurant.location}</Text>
+                                    <Text size="sm" c="dimmed">
+                                        {restaurant.location}
+                                    </Text>
                                     <a
                                         href={`https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{textDecoration: "none"}}
+                                        style={{ textDecoration: "none" }}
                                     >
                                         <Button variant="outline" size="xs" mt={4}>
                                             Trasa
                                         </Button>
                                     </a>
-
                                 </Popup>
-
                             </Marker>
                         </MapContainer>
                     </div>
                 </Tabs.Panel>
 
                 <Tabs.Panel value="menu" pt="md">
-                    <Text>Menu wkrótce!</Text>
+                    {Array.isArray(restaurant.menu) && restaurant.menu.length > 0 ? (
+                        <Stack gap="lg">
+                            {(() => {
+                                // grupowanie pozycji po kategorii
+                                const groups = new Map<string, MenuItem[]>();
+                                (restaurant.menu || []).forEach((it) => {
+                                    const key = (it.category || "Pozostałe").trim();
+                                    if (!groups.has(key)) groups.set(key, []);
+                                    groups.get(key)!.push(it);
+                                });
+
+                                return [...groups.entries()]
+                                    .sort((a, b) => a[0].localeCompare(b[0]))
+                                    .map(([cat, items]) => (
+                                        <Box key={cat}>
+                                            <Text fw={700} mb="xs">
+                                                {cat}
+                                            </Text>
+                                            <Table striped highlightOnHover withColumnBorders>
+                                                <Table.Thead>
+                                                    <Table.Tr>
+                                                        <Table.Th>Nazwa</Table.Th>
+                                                        <Table.Th>Opis</Table.Th>
+                                                        <Table.Th>Cena</Table.Th>
+                                                        <Table.Th>Status</Table.Th>
+                                                    </Table.Tr>
+                                                </Table.Thead>
+                                                <Table.Tbody>
+                                                    {items.map((it, idx) => (
+                                                        <Table.Tr key={idx}>
+                                                            <Table.Td style={{ whiteSpace: "nowrap" }}>
+                                                                {it.name}
+                                                            </Table.Td>
+                                                            <Table.Td>{it.description || "-"}</Table.Td>
+                                                            <Table.Td style={{ whiteSpace: "nowrap" }}>
+                                                                {formatPrice(it.price)}
+                                                            </Table.Td>
+                                                            <Table.Td>
+                                                                {it.isAvailable === false ? (
+                                                                    <Badge color="red" variant="light">
+                                                                        Niedostępne
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge color="green" variant="light">
+                                                                        Dostępne
+                                                                    </Badge>
+                                                                )}
+                                                            </Table.Td>
+                                                        </Table.Tr>
+                                                    ))}
+                                                </Table.Tbody>
+                                            </Table>
+                                        </Box>
+                                    ));
+                            })()}
+                        </Stack>
+                    ) : (
+                        <Text c="dimmed">Menu nie zostało jeszcze dodane.</Text>
+                    )}
                 </Tabs.Panel>
 
                 <Tabs.Panel value="reviews" pt="md">
@@ -133,7 +229,10 @@ export const RestaurantDetails = () => {
                 </Tabs.Panel>
 
                 <Tabs.Panel value="reservation" pt="md">
-                    <ReservationForm restaurantId={restaurant.id} restaurant={restaurant} />
+                    <ReservationForm
+                        restaurantId={restaurant.id}
+                        restaurant={restaurant}
+                    />
                 </Tabs.Panel>
             </Tabs>
         </Stack>
