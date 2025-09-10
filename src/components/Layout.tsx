@@ -29,7 +29,7 @@ export const Layout = () => {
                 </div>
             </AppShell.Header>
 
-            <AppShell.Navbar p="md">
+            <AppShell.Navbar p="0">
                 <AppNavbar/>
             </AppShell.Navbar>
             <AppShell.Main><Outlet/></AppShell.Main>

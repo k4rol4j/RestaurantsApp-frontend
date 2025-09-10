@@ -5,6 +5,9 @@ import {
     Stack,
     Text,
     Skeleton,
+    ScrollArea,
+    Flex,
+    Box,
 } from '@mantine/core';
 import {
     IconCalendar,
@@ -28,111 +31,111 @@ export const AppNavbar = () => {
     const [loadingOwned, setLoadingOwned] = React.useState(false);
 
     React.useEffect(() => {
-        api
-            .get('/auth/me')
-            .then((r) => {
-                setUser(r.data);
-                const roles = r.data?.roles ?? [];
-                if (roles.includes('RESTAURANT_OWNER') || roles.includes('ADMIN')) {
-                    setLoadingOwned(true);
-                    myRestaurants()
-                        .then(setOwned)
-                        .catch(() => setOwned([]))
-                        .finally(() => setLoadingOwned(false));
-                }
-            })
-            .catch(() => setUser(null));
+        api.get('/auth/me').then(r => setUser(r.data)).catch(() => setUser(null));
+        setLoadingOwned(true);
+        myRestaurants().then(setOwned).catch(() => setOwned([])).finally(() => setLoadingOwned(false));
     }, []);
 
-    const isOwner =
+    const hasOwnerRole =
         user?.roles?.includes('RESTAURANT_OWNER') || user?.roles?.includes('ADMIN');
+    const showManage = hasOwnerRole || owned.length > 0;
 
     const go = (to: string) => () => navigate(to);
-
     const onLogout = async () => {
         await logout();
         navigate('/login');
     };
 
     return (
-        <Stack gap="xs">
-            <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
-                Nawigacja
-            </Text>
-            <NavLink
-                label="Szukaj"
-                leftSection={<IconSearch size={16} stroke={1.5} />}
-                onClick={go('/reservations')}
-                active={pathname === '/reservations'}
-                variant="subtle"
-            />
-            <NavLink
-                label="Moje rezerwacje"
-                leftSection={<IconCalendar size={16} stroke={1.5} />}
-                onClick={go('/reservations/my')}
-                active={pathname === '/reservations/my'}
-                variant="subtle"
-            />
-            <NavLink
-                label="Ulubione"
-                leftSection={<IconHeart size={16} stroke={1.5} />}
-                onClick={go('/favorites')}
-                active={pathname === '/favorites'}
-                variant="subtle"
-            />
+        <Flex direction="column" h="100%">
+            {/* GÓRNA CZĘŚĆ – przewijana */}
+            <ScrollArea.Autosize mah="100%" type="auto" scrollbarSize={6}>
+                <Box p="md">
+                    <Stack gap="xs">
+                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
+                            Nawigacja
+                        </Text>
 
-            {isOwner && (
-                <>
-                    <Divider my="sm" />
-                    <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
-                        Zarządzanie
-                    </Text>
-
-                    {loadingOwned ? (
-                        <Stack gap={6} px="xs">
-                            <Skeleton h={32} radius="sm" />
-                            <Skeleton h={32} radius="sm" />
-                        </Stack>
-                    ) : owned.length <= 1 ? (
                         <NavLink
-                            label="Panel zarządzania"
-                            leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
-                            onClick={() =>
-                                owned[0]?.id && navigate(`/owner/${owned[0].id}/dashboard`)
-                            }
-                            active={
-                                !!owned[0]?.id && pathname.startsWith(`/owner/${owned[0].id}`)
-                            }
+                            label="Szukaj"
+                            leftSection={<IconSearch size={16} stroke={1.5} />}
+                            onClick={go('/reservations')}
+                            active={pathname === '/reservations'}
                             variant="subtle"
                         />
-                    ) : (
                         <NavLink
-                            label="Panel zarządzania"
-                            leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
-                            defaultOpened
+                            label="Moje rezerwacje"
+                            leftSection={<IconCalendar size={16} stroke={1.5} />}
+                            onClick={go('/reservations/my')}
+                            active={pathname === '/reservations/my'}
                             variant="subtle"
-                        >
-                            {owned.map((r) => (
-                                <NavLink
-                                    key={r.id}
-                                    label={r.name}
-                                    onClick={go(`/owner/${r.id}/dashboard`)}
-                                    active={pathname.startsWith(`/owner/${r.id}`)}
-                                    variant="subtle"
-                                />
-                            ))}
-                        </NavLink>
-                    )}
-                </>
-            )}
+                        />
+                        <NavLink
+                            label="Ulubione"
+                            leftSection={<IconHeart size={16} stroke={1.5} />}
+                            onClick={go('/favorites')}
+                            active={pathname === '/favorites'}
+                            variant="subtle"
+                        />
 
-            <Divider my="sm" />
-            <NavLink
-                label="Wyloguj się"
-                leftSection={<IconLogout size={16} stroke={1.5} />}
-                onClick={onLogout}
-                variant="subtle"
-            />
-        </Stack>
+                        {showManage && (
+                            <>
+                                <Divider my="sm" />
+                                <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
+                                    Zarządzanie
+                                </Text>
+
+                                {loadingOwned ? (
+                                    <Stack gap={6} px="xs">
+                                        <Skeleton h={32} radius="sm" />
+                                        <Skeleton h={32} radius="sm" />
+                                    </Stack>
+                                ) : owned.length <= 1 ? (
+                                    <NavLink
+                                        label="Panel zarządzania"
+                                        leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
+                                        onClick={() =>
+                                            owned[0]?.id && navigate(`/owner/${owned[0].id}/dashboard`)
+                                        }
+                                        active={
+                                            !!owned[0]?.id &&
+                                            pathname.startsWith(`/owner/${owned[0].id}`)
+                                        }
+                                        variant="subtle"
+                                    />
+                                ) : (
+                                    <NavLink
+                                        label="Panel zarządzania"
+                                        leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
+                                        defaultOpened
+                                        variant="subtle"
+                                    >
+                                        {owned.map((r) => (
+                                            <NavLink
+                                                key={r.id}
+                                                label={r.name}
+                                                onClick={go(`/owner/${r.id}/dashboard`)}
+                                                active={pathname.startsWith(`/owner/${r.id}`)}
+                                                variant="subtle"
+                                            />
+                                        ))}
+                                    </NavLink>
+                                )}
+                            </>
+                        )}
+                    </Stack>
+                </Box>
+            </ScrollArea.Autosize>
+
+            <Divider />
+            <Box p="md">
+                <NavLink
+                    label="Wyloguj się"
+                    leftSection={<IconLogout size={16} stroke={1.5} />}
+                    onClick={onLogout}
+                    variant="subtle"
+                />
+            </Box>
+        </Flex>
     );
 };
