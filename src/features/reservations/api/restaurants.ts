@@ -34,7 +34,7 @@ export const searchRestaurants = async (filters: {
         if (typeof filters.longitude === 'number') queryParams.append('longitude', String(filters.longitude));
         if (typeof filters.radius === 'number') queryParams.append('radius', String(filters.radius));
 
-        const qs = queryParams.toString(); 
+        const qs = queryParams.toString();
         const response = await fetch(`${API_URL}/restaurants/search?${qs}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
