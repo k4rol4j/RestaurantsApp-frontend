@@ -1,3 +1,4 @@
+// src/features/routing/Routing.tsx
 import { useRoutes, Navigate } from 'react-router-dom';
 import RequireAuth from './RequireAuth';
 import RedirectIfAuthed from './RedirectIfAuthed';
@@ -7,12 +8,21 @@ import { MyReservations } from '../reservations/MyReservations';
 import { RestaurantDetails } from '../reservations/RestaurantDetails';
 import { Favorites } from '../reservations/Favorites';
 import { RestaurantSearchByLocation } from '../reservations/RestaurantSearchByLocation';
-import OwnerLayout from "../owner/OwnerLayout.tsx";
-import Dashboard from "../owner/pages/Dashboard.tsx";
-import Profile from "../owner/pages/Profile.tsx";
-import Tables from "../owner/pages/Tables.tsx";
-import Reservations from "../owner/pages/Reservations.tsx";
-import RequireOwner from "./RequireOwner.tsx";
+
+import OwnerLayout from '../owner/OwnerLayout';
+import Dashboard from '../owner/pages/Dashboard';
+import Profile from '../owner/pages/Profile';
+import Tables from '../owner/pages/Tables';
+import Reservations from '../owner/pages/Reservations';
+
+import { GenericRoleRoute } from './GenericRoleRoute';
+
+// --- ADMIN (utwórz te komponenty, jeśli jeszcze nie masz) ---
+import { AdminLayout } from '../admin/AdminLayout';
+import { AdminUsersPage } from '../admin/pages/AdminUsersPage';
+import { AdminRestaurantsPage } from '../admin/pages/AdminRestaurantsPage';
+import { AdminReservationsPage } from '../admin/pages/AdminReservationsPage';
+import { AdminReviewsPage } from '../admin/pages/AdminReviewsPage';
 
 export const Routing = () => {
     const routes = useRoutes([
@@ -36,20 +46,38 @@ export const Routing = () => {
                 { path: '*', element: <Navigate to="/login" replace /> },
             ],
         },
+
+        // OWNER: używamy GenericRoleRoute zamiast RequireOwner/OwnerRoute
         {
             path: 'owner/:rid',
-            element: <RequireOwner />,
+            element: (
+                <GenericRoleRoute allowedRoles={['RESTAURANT_OWNER', 'ADMIN']}>
+                    <OwnerLayout />
+                </GenericRoleRoute>
+            ),
             children: [
-                {
-                    element: <OwnerLayout />,
-                    children: [
-                        { index: true, element: <Navigate to="dashboard" replace /> },
-                        { path: 'dashboard', element: <Dashboard /> },
-                        { path: 'profile', element: <Profile /> },
-                        { path: 'tables', element: <Tables /> },
-                        { path: 'reservations', element: <Reservations /> },
-                    ],
-                },
+                { index: true, element: <Navigate to="dashboard" replace /> },
+                { path: 'dashboard', element: <Dashboard /> },
+                { path: 'profile', element: <Profile /> },
+                { path: 'tables', element: <Tables /> },
+                { path: 'reservations', element: <Reservations /> },
+            ],
+        },
+
+        // ADMIN: nowa sekcja panelu administratora
+        {
+            path: 'admin',
+            element: (
+                <GenericRoleRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout />
+                </GenericRoleRoute>
+            ),
+            children: [
+                { index: true, element: <Navigate to="users" replace /> },
+                { path: 'users', element: <AdminUsersPage /> },
+                { path: 'restaurants', element: <AdminRestaurantsPage /> },
+                { path: 'reservations', element: <AdminReservationsPage /> },
+                { path: 'reviews', element: <AdminReviewsPage /> },
             ],
         },
 

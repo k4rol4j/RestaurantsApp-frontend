@@ -17,8 +17,8 @@ import {
     IconLayoutDashboard,
 } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { logout } from '../features/login/api/logout.ts';
-import { api, myRestaurants } from '../api.ts';
+import { logout } from '../features/login/api/logout';
+import { api, myRestaurants } from '../api';
 
 type User = { id: number; email: string; roles: string[] };
 
@@ -31,16 +31,29 @@ export const AppNavbar = () => {
     const [loadingOwned, setLoadingOwned] = React.useState(false);
 
     React.useEffect(() => {
-        api.get('/auth/me').then(r => setUser(r.data)).catch(() => setUser(null));
+        api
+            .get('/auth/me')
+            .then((r) => setUser(r.data))
+            .catch(() => setUser(null));
+
         setLoadingOwned(true);
-        myRestaurants().then(setOwned).catch(() => setOwned([])).finally(() => setLoadingOwned(false));
+        myRestaurants()
+            .then(setOwned)
+            .catch(() => setOwned([]))
+            .finally(() => setLoadingOwned(false));
     }, []);
 
     const hasOwnerRole =
         user?.roles?.includes('RESTAURANT_OWNER') || user?.roles?.includes('ADMIN');
     const showManage = hasOwnerRole || owned.length > 0;
 
-    const go = (to: string) => () => navigate(to);
+    const isAdmin = user?.roles?.includes('ADMIN');
+
+    const go =
+        (to: string) =>
+            () =>
+                navigate(to);
+
     const onLogout = async () => {
         await logout();
         navigate('/login');
@@ -92,20 +105,17 @@ export const AppNavbar = () => {
                                     </Stack>
                                 ) : owned.length <= 1 ? (
                                     <NavLink
-                                        label="Panel zarządzania"
+                                        label="Panel właściciela"
                                         leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
                                         onClick={() =>
                                             owned[0]?.id && navigate(`/owner/${owned[0].id}/dashboard`)
                                         }
-                                        active={
-                                            !!owned[0]?.id &&
-                                            pathname.startsWith(`/owner/${owned[0].id}`)
-                                        }
+                                        active={!!owned[0]?.id && pathname.startsWith(`/owner/${owned[0].id}`)}
                                         variant="subtle"
                                     />
                                 ) : (
                                     <NavLink
-                                        label="Panel zarządzania"
+                                        label="Panel właściciela"
                                         leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
                                         defaultOpened
                                         variant="subtle"
@@ -121,6 +131,23 @@ export const AppNavbar = () => {
                                         ))}
                                     </NavLink>
                                 )}
+                            </>
+                        )}
+
+                        {isAdmin && (
+                            <>
+                                <Divider my="sm" />
+                                <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
+                                    Administracja
+                                </Text>
+
+                                <NavLink
+                                    label="Panel administratora"
+                                    leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
+                                    onClick={go('/admin')}
+                                    active={pathname.startsWith('/admin')}
+                                    variant="subtle"
+                                />
                             </>
                         )}
                     </Stack>
