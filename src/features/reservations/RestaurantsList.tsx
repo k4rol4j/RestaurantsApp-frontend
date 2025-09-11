@@ -1,4 +1,4 @@
-// RestaurantsList.tsx
+// src/features/reservations/RestaurantsList.tsx
 
 import {
     Text,
@@ -15,34 +15,38 @@ import {
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Restaurant } from "./hooks/useMakeReservation.ts";
-import { searchRestaurants } from "./api/restaurants.ts";
-import { getFavorites, toggleFavorite } from "./api/favorites.ts";
-import { API_URL } from "../../config.ts";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import { Restaurant } from "./hooks/useMakeReservation";
+import { searchRestaurants } from "./api/restaurants";
+import { getFavorites, toggleFavorite } from "./api/favorites";
+import { API_URL } from "../../config";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RestaurantCard } from "./RestaurantCard";
-import { useMap } from "react-leaflet";
 
 const markerIcon = new L.Icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconUrl:
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    iconRetinaUrl:
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    shadowUrl:
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
     shadowSize: [41, 41],
 });
 
-function FlyToMarkers({ restaurants, radius }: { restaurants: Restaurant[], radius: number }) {
+type City = { label: string; value: string; latitude: number; longitude: number };
+
+function FlyToMarkers({ restaurants, radius }: { restaurants: Restaurant[]; radius: number }) {
     const map = useMap();
     useEffect(() => {
-        const validCoords = restaurants.filter(r => r.latitude && r.longitude);
-        if (validCoords.length > 0) {
-            const bounds = L.latLngBounds(validCoords.map(r => [r.latitude!, r.longitude!]));
-            map.flyToBounds(bounds, { padding: [radius * 2, radius * 2] });
+        const valid = restaurants.filter((r) => r.latitude && r.longitude);
+        if (valid.length > 0) {
+            const bounds = L.latLngBounds(valid.map((r) => [r.latitude!, r.longitude!] as [number, number]));
+            map.flyToBounds(bounds, { padding: [radius * 2, radius * 2] as any });
         } else {
             map.setView([52.069167, 19.480556], 6);
         }
@@ -60,15 +64,18 @@ interface FilterParams {
     longitude?: number;
     radius?: number;
     sortByDistance?: boolean;
-    date?: string; // "YYYY-MM-DD"
-    time?: string; // "HH:mm"
+    date?: string;   // "YYYY-MM-DD"
+    time?: string;   // "HH:mm"
     partySize?: number;
 }
 
-export const RestaurantsList = () => {
+export const RestaurantsList: React.FC = () => {
     const navigate = useNavigate();
+
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
     const [favorites, setFavorites] = useState<number[]>([]);
+
+    // filtry
     const [cuisineFilter, setCuisineFilter] = useState<string[]>([]);
     const [nameFilter, setNameFilter] = useState<string>("");
     const [minRating, setMinRating] = useState<number | null>(null);
@@ -76,18 +83,20 @@ export const RestaurantsList = () => {
     const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [sortByDistance, setSortByDistance] = useState<boolean>(false);
-    const [locationFilters, setLocationFilters] = useState<FilterParams | null>(null);
 
-    const [cities, setCities] = useState<{ label: string; value: string; latitude: number; longitude: number }[]>([]);
-    const [selectedCity, setSelectedCity] = useState<typeof cities[0] | null>(null);
+    // lokalizacja
+    const [cities, setCities] = useState<City[]>([]);
+    const [selectedCity, setSelectedCity] = useState<City | null>(null);
     const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [radius, setRadius] = useState<number>(0);
+    const [locationFilters, setLocationFilters] = useState<FilterParams | null>(null);
 
-    // Nowe stany dla dostępności
+    // dostępność (używane w sekcji "Filtruj", nie w "Szukaj")
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedTime, setSelectedTime] = useState<string>("19:00");
     const [people, setPeople] = useState<number>(2);
 
+    // pierwsze ładowanie
     useEffect(() => {
         fetchRestaurants();
         fetchCuisines();
@@ -95,22 +104,41 @@ export const RestaurantsList = () => {
         fetchCities();
     }, []);
 
+    // miasta
     const fetchCities = async () => {
         try {
             const res = await fetch(`${API_URL}/restaurants/cities`);
             const data = await res.json();
-            setCities(data);
+            setCities(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error("Błąd pobierania miast:", error);
         }
     };
 
+    // gdy wybierzemy miasto – ustaw pozycję mapy
     useEffect(() => {
         if (selectedCity) {
             setMapLocation({ lat: selectedCity.latitude, lng: selectedCity.longitude });
+        } else {
+            setMapLocation(null);
         }
     }, [selectedCity]);
 
+    // synchronizuj locationFilters, gdy zmienia się miasto lub promień
+    useEffect(() => {
+        if (selectedCity) {
+            setLocationFilters({
+                location: selectedCity.label,
+                latitude: selectedCity.latitude,
+                longitude: selectedCity.longitude,
+                radius: radius || 0,
+            });
+        } else {
+            setLocationFilters(null);
+        }
+    }, [selectedCity, radius]);
+
+    // lista startowa (wszyscy) – publiczny endpoint /restaurants/search
     const fetchRestaurants = async () => {
         setLoading(true);
         try {
@@ -143,26 +171,25 @@ export const RestaurantsList = () => {
         }
     };
 
+    // SZUKAJ — po nazwie + ewentualnie lokalizacja (miasto lub geofilter)
     const handleSearch = async () => {
         setLoading(true);
         try {
+            const params: any = {};
             const trimmed = nameFilter.trim();
+            if (trimmed) params.name = trimmed;
 
-            // jeśli puste pole – ładujemy „wszystkie”
-            if (!trimmed) {
-                await fetchRestaurants();
-                return;
-            }
-
-            // opcjonalnie dodaj lokalizację z miasta (geofilter)
-            const params: any = { name: trimmed };
             if (selectedCity) {
-                params.location = selectedCity.label;      // np. "Gdańsk"
-                params.latitude = selectedCity.latitude;
-                params.longitude = selectedCity.longitude;
-                params.radius = radius || 0;               // km
+                if (radius && radius > 0) {
+                    params.latitude = selectedCity.latitude;
+                    params.longitude = selectedCity.longitude;
+                    params.radius = radius;
+                } else {
+                    params.location = selectedCity.label; // samo miasto
+                }
             }
 
+            // console.log('[SEARCH params]', params);
             const data = await searchRestaurants(params);
             setRestaurants(data);
         } catch (e) {
@@ -173,19 +200,23 @@ export const RestaurantsList = () => {
         }
     };
 
-    // const toYMD = (d: Date) =>
-    //     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const toYMD = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+    // FILTRUJ — kuchnie / ocena / sort / dystans / dostępność → POST /restaurants/filter
     const handleFilter = async () => {
         setLoading(true);
         try {
             const filters: FilterParams = locationFilters ? { ...locationFilters } : {};
-            if (cuisineFilter) filters.cuisine = cuisineFilter;
+            if (cuisineFilter?.length) filters.cuisine = cuisineFilter;
             if (minRating !== null) filters.minRating = minRating;
             if (sortOrder) filters.sortOrder = sortOrder;
             if (sortByDistance) filters.sortByDistance = true;
 
-            console.log('filters', filters);
+            // dostępność (opcjonalna)
+            if (selectedDate) filters.date = toYMD(selectedDate);
+            if (selectedTime) filters.time = selectedTime.slice(0, 5);
+            if (people && people > 0) filters.partySize = people;
 
             const response = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
@@ -200,8 +231,9 @@ export const RestaurantsList = () => {
         } catch (error) {
             console.error("Błąd filtrowania restauracji:", error);
             setRestaurants([]);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleToggleFavorite = async (id: number) => {
@@ -223,18 +255,20 @@ export const RestaurantsList = () => {
                     value={nameFilter}
                     onChange={(e) => setNameFilter(e.currentTarget.value)}
                 />
+
                 <Select
                     label="Miasto"
                     placeholder="Wybierz miasto"
                     data={cities.map((c) => ({ value: c.value, label: c.label }))}
                     value={selectedCity?.value || null}
                     onChange={(val) => {
-                        const city = cities.find((c) => c.value === val);
-                        setSelectedCity(city || null);
+                        const city = cities.find((c) => c.value === val) || null;
+                        setSelectedCity(city);
                     }}
                     searchable
                     clearable
                 />
+
                 <NumberInput
                     label="Promień wyszukiwania (km)"
                     value={radius}
@@ -244,7 +278,7 @@ export const RestaurantsList = () => {
                     disabled={!selectedCity}
                 />
 
-                {/* NOWE pola dostępności */}
+                {/* Dostępność (do FILTRUJ, nie do SZUKAJ) */}
                 <Group grow>
                     <DateInput
                         label="Data dostępności"
@@ -265,9 +299,31 @@ export const RestaurantsList = () => {
                     />
                 </Group>
 
-                <Button onClick={handleSearch} disabled={loading}>
-                    {loading ? <Loader size="sm" /> : "Szukaj"}
-                </Button>
+                <Group>
+                    <Button onClick={handleSearch} disabled={loading}>
+                        {loading ? <Loader size="sm" /> : "Szukaj"}
+                    </Button>
+                    <Button
+                        variant="default"
+                        onClick={() => {
+                            // pełny reset stanów
+                            setNameFilter("");
+                            setCuisineFilter([]);
+                            setMinRating(null);
+                            setSelectedCity(null);
+                            setSortOrder(null);
+                            setRadius(0);
+                            setSelectedDate(null);
+                            setSelectedTime("19:00");
+                            setPeople(2);
+                            setLocationFilters(null);
+                            fetchRestaurants();
+                            fetchFavorites();
+                        }}
+                    >
+                        Wyczyść
+                    </Button>
+                </Group>
 
                 <MultiSelect
                     label="Filtruj według kuchni"
@@ -278,6 +334,7 @@ export const RestaurantsList = () => {
                     clearable
                     searchable
                 />
+
                 <NumberInput
                     label="Minimalna ocena"
                     placeholder="Podaj ocenę (1-5)"
@@ -285,8 +342,11 @@ export const RestaurantsList = () => {
                     max={5}
                     step={0.5}
                     value={minRating ?? undefined}
-                    onChange={(value) => (typeof value === "number" ? setMinRating(value) : setMinRating(null))}
+                    onChange={(value) =>
+                        typeof value === "number" ? setMinRating(value) : setMinRating(null)
+                    }
                 />
+
                 <Select
                     label="Sortuj wg oceny"
                     placeholder="Wybierz sortowanie"
@@ -295,36 +355,20 @@ export const RestaurantsList = () => {
                         { label: "Od najniższej", value: "asc" },
                     ]}
                     value={sortOrder}
-                    onChange={(val) => setSortOrder(val as "asc" | "desc")}
+                    onChange={(val) => setSortOrder((val as "asc" | "desc") ?? null)}
                     clearable
                 />
+
                 <Checkbox
                     label="Sortuj wg odległości od wybranej lokalizacji"
                     checked={sortByDistance}
                     onChange={(event) => setSortByDistance(event.currentTarget.checked)}
                     disabled={!selectedCity && (!mapLocation || radius === 0)}
                 />
+
                 <Group>
                     <Button onClick={handleFilter} disabled={loading}>
                         {loading ? <Loader size="sm" /> : "Filtruj"}
-                    </Button>
-                    <Button
-                        variant="default"
-                        onClick={() => {
-                            setCuisineFilter([]);
-                            setMinRating(null);
-                            setSelectedCity(null);
-                            setSortOrder(null);
-                            setRadius(0);
-                            setSelectedDate(null);
-                            setSelectedTime("19:00");
-                            setPeople(2);
-                            fetchRestaurants();
-                            setLocationFilters(null);
-                            fetchFavorites();
-                        }}
-                    >
-                        Wyczyść filtry
                     </Button>
                 </Group>
             </Box>
@@ -344,7 +388,11 @@ export const RestaurantsList = () => {
                                     <Text fw={700}>{r.name}</Text>
                                     <Text size="sm">{r.cuisine}</Text>
                                     <Group mt={4}>
-                                        <Button variant="light" size="xs" onClick={() => navigate(`/reservations/${r.id}`)}>
+                                        <Button
+                                            variant="light"
+                                            size="xs"
+                                            onClick={() => navigate(`/reservations/${r.id}`)}
+                                        >
                                             Szczegóły
                                         </Button>
                                         <a
