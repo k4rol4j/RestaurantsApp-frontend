@@ -32,10 +32,7 @@ export const AppNavbar = () => {
     const [loadingOwned, setLoadingOwned] = React.useState(false);
 
     React.useEffect(() => {
-        api
-            .get('/auth/me')
-            .then((r) => setUser(r.data))
-            .catch(() => setUser(null));
+        api.get('/auth/me').then(r => setUser(r.data)).catch(() => setUser(null));
 
         setLoadingOwned(true);
         myRestaurants()
@@ -46,7 +43,6 @@ export const AppNavbar = () => {
 
     const isOwner = user?.roles?.includes('RESTAURANT_OWNER');
     const isAdmin = user?.roles?.includes('ADMIN');
-    const showOwnerSection = isOwner && owned.length > 0;
 
     const go =
         (to: string) =>
@@ -90,7 +86,8 @@ export const AppNavbar = () => {
                             variant="subtle"
                         />
 
-                        {showOwnerSection && (
+                        {/* --- SEK CJA WŁAŚCICIELA --- */}
+                        {isOwner && (
                             <>
                                 <Divider my="sm" />
                                 <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
@@ -102,16 +99,23 @@ export const AppNavbar = () => {
                                         <Skeleton h={32} radius="sm" />
                                         <Skeleton h={32} radius="sm" />
                                     </Stack>
+                                ) : owned.length === 0 ? (
+                                    // Widoczne, ale wyłączone gdy brak restauracji
+                                    <NavLink
+                                        label="Panel właściciela"
+                                        leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
+                                        variant="subtle"
+                                        disabled
+                                        // opcjonalnie: hint co zrobić dalej
+                                        description="Brak restauracji do zarządzania"
+                                    />
                                 ) : owned.length === 1 ? (
                                     <NavLink
                                         label="Panel właściciela"
                                         leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
-                                        onClick={() =>
-                                            owned[0]?.id &&
-                                            navigate(`/owner/${owned[0].id}/dashboard`)
-                                        }
+                                        onClick={() => navigate(`/owner/${owned[0].id}/dashboard`)}
                                         active={
-                                            !!owned[0]?.id && pathname.startsWith(`/owner/${owned[0].id}`)
+                                            pathname.startsWith(`/owner/${owned[0].id}`)
                                         }
                                         variant="subtle"
                                     />
@@ -136,6 +140,7 @@ export const AppNavbar = () => {
                             </>
                         )}
 
+                        {/* --- SEK CJA ADMINA --- */}
                         {isAdmin && (
                             <>
                                 <Divider my="sm" />
