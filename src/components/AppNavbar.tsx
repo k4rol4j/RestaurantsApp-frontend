@@ -1,3 +1,4 @@
+// src/components/AppNavbar.tsx
 import React from 'react';
 import {
     NavLink,
@@ -43,11 +44,9 @@ export const AppNavbar = () => {
             .finally(() => setLoadingOwned(false));
     }, []);
 
-    const hasOwnerRole =
-        user?.roles?.includes('RESTAURANT_OWNER') || user?.roles?.includes('ADMIN');
-    const showManage = hasOwnerRole || owned.length > 0;
-
+    const isOwner = user?.roles?.includes('RESTAURANT_OWNER');
     const isAdmin = user?.roles?.includes('ADMIN');
+    const showOwnerSection = isOwner && owned.length > 0;
 
     const go =
         (to: string) =>
@@ -91,7 +90,7 @@ export const AppNavbar = () => {
                             variant="subtle"
                         />
 
-                        {showManage && (
+                        {showOwnerSection && (
                             <>
                                 <Divider my="sm" />
                                 <Text size="xs" c="dimmed" fw={700} tt="uppercase" ml="xs">
@@ -103,14 +102,17 @@ export const AppNavbar = () => {
                                         <Skeleton h={32} radius="sm" />
                                         <Skeleton h={32} radius="sm" />
                                     </Stack>
-                                ) : owned.length <= 1 ? (
+                                ) : owned.length === 1 ? (
                                     <NavLink
                                         label="Panel właściciela"
                                         leftSection={<IconLayoutDashboard size={16} stroke={1.5} />}
                                         onClick={() =>
-                                            owned[0]?.id && navigate(`/owner/${owned[0].id}/dashboard`)
+                                            owned[0]?.id &&
+                                            navigate(`/owner/${owned[0].id}/dashboard`)
                                         }
-                                        active={!!owned[0]?.id && pathname.startsWith(`/owner/${owned[0].id}`)}
+                                        active={
+                                            !!owned[0]?.id && pathname.startsWith(`/owner/${owned[0].id}`)
+                                        }
                                         variant="subtle"
                                     />
                                 ) : (
