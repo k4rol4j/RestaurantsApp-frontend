@@ -17,7 +17,7 @@ import { DateInput, TimeInput } from "@mantine/dates";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Restaurant } from "./hooks/useMakeReservation.ts";
-import { listRestaurants } from "./api/reservations.ts";
+import { searchRestaurants } from "./api/restaurants.ts";
 import { getFavorites, toggleFavorite } from "./api/favorites.ts";
 import { API_URL } from "../../config.ts";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -114,12 +114,13 @@ export const RestaurantsList = () => {
     const fetchRestaurants = async () => {
         setLoading(true);
         try {
-            const response = await listRestaurants();
-            setRestaurants(response);
+            const data = await searchRestaurants({});
+            setRestaurants(data);
         } catch (error) {
             console.error("Błąd pobierania restauracji:", error);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const fetchFavorites = async () => {
@@ -145,39 +146,25 @@ export const RestaurantsList = () => {
     const handleSearch = async () => {
         setLoading(true);
         try {
-            const filters: FilterParams = {};
-            if (nameFilter.trim()) filters.name = nameFilter.trim();
+            const trimmed = nameFilter.trim();
+
+            // jeśli puste pole – ładujemy „wszystkie”
+            if (!trimmed) {
+                await fetchRestaurants();
+                return;
+            }
+
+            // opcjonalnie dodaj lokalizację z miasta (geofilter)
+            const params: any = { name: trimmed };
             if (selectedCity) {
-                filters.location = selectedCity.label;
-                filters.latitude = selectedCity.latitude;
-                filters.longitude = selectedCity.longitude;
-                filters.radius = radius;
+                params.location = selectedCity.label;      // np. "Gdańsk"
+                params.latitude = selectedCity.latitude;
+                params.longitude = selectedCity.longitude;
+                params.radius = radius || 0;               // km
             }
 
-            if (selectedDate) {
-                filters.date = toYMD(selectedDate);
-            }
-            if (selectedTime) {
-                filters.time = selectedTime.slice(0, 5);
-            }
-            if (people && people > 0) {
-                filters.partySize = people;
-            }
-
-            setLocationFilters({
-                location: filters.location,
-                latitude: filters.latitude,
-                longitude: filters.longitude,
-                radius: filters.radius,
-            });
-
-            const res = await fetch(`${API_URL}/restaurants/filter`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(filters),
-            });
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            setRestaurants(await res.json());
+            const data = await searchRestaurants(params);
+            setRestaurants(data);
         } catch (e) {
             console.error("Błąd szukania", e);
             setRestaurants([]);
@@ -186,8 +173,8 @@ export const RestaurantsList = () => {
         }
     };
 
-    const toYMD = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // const toYMD = (d: Date) =>
+    //     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
     const handleFilter = async () => {
         setLoading(true);
