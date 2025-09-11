@@ -1,83 +1,40 @@
-import ky from "ky";
-import { API_URL } from "../../../config.ts";
-import { RestaurantsType } from "../hooks/useMakeReservation.ts";
+import { api } from '../../../api';
 
-async function dataFrom(response: Response) {
-    try {
-        return await response.clone().json();
-    } catch {
-        try {
-            return await response.text();
-        } catch {
-            return null;
-        }
-    }
-}
+/** Spójny typ rezerwacji do frontu */
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED';
 
-function extractMessage(data: any, status: number) {
-    if (!data) return `Błąd (${status})`;
-    if (typeof data === "string") return data;
-    const msg = Array.isArray(data?.message)
-        ? data.message.join(", ")
-        : data?.message || data?.error;
-    return msg || `Błąd (${status})`;
-}
-
-const api = ky.create({
-    credentials: "include",
-    hooks: {
-        afterResponse: [
-            async (_req, _opts, res) => {
-                if (!res.ok) {
-                    const data = await dataFrom(res);
-                    const msg = extractMessage(data, res.status);
-                    const err = new Error(msg) as any;
-                    err.status = res.status;
-                    throw err;
-                }
-            },
-        ],
-    },
-});
-
-//restauracje
-export const listRestaurants = async () => {
-    return api.get(`${API_URL}/restaurants`, { cache: "no-store" }).json<RestaurantsType>();
+export type ReservationTable = {
+    table: { id: number; name: string | null; seats: number };
 };
 
-//rezerwacje
-export const makeReservation = async ({
-                                          restaurantId,
-                                          date,
-                                          time,
-                                          people,
-                                          durationMinutes,
-                                      }: {
-    restaurantId: number;
-    date: string;
-    time: string;
+export type Reservation = {
+    id: number;
+    date: string;      // ISO
+    time: string;      // "HH:mm"
     people: number;
-    durationMinutes: number;
-}) => {
-    return api
-        .post(`${API_URL}/reservations`, {
-            json: { restaurantId, date, time, people, durationMinutes },
-        })
-        .json();
+    status: ReservationStatus;
+    review?: { id: number } | null;
+    restaurant: { id: number; name: string; location: string; cuisine: string };
+    tables?: ReservationTable[];
 };
 
-export const getMyReservations = async () => {
-    // Upewnij się, że ścieżka zgadza się z backendem: /reservations/my vs /reservations/mine
-    return api.get(`${API_URL}/reservations/my`, { cache: "no-store" }).json();
-};
+/**
+ * Zwraca ZAWSZE tablicę rezerwacji.
+ * Backend może zwracać {items: [...] } albo samą tablicę — normalizujemy tutaj.
+ */
+export async function getMyReservations(): Promise<Reservation[]> {
+    const res = await api.get('/reservations/my');
+    const data = res.data;
+    if (Array.isArray(data)) return data as Reservation[];
+    if (data && Array.isArray(data.items)) return data.items as Reservation[];
+    return [];
+}
 
-export const deleteReservation = async (id: number) => {
-    // używamy ky, dziedziczy credentials i obsługę błędów
-    // backend może zwrócić { ok: true } lub 204 – oba będą OK
-    const res = await api.delete(`${API_URL}/reservations/${id}`);
-    try {
-        return await res.json();
-    } catch {
-        return { ok: true };
-    }
-};
+/** Miękkie anulowanie własnej rezerwacji (tylko PENDING) */
+export async function cancelMyReservation(id: number): Promise<{ id: number; status: ReservationStatus } | any> {
+    const res = await api.patch(`/reservations/${id}/cancel`);
+    return res.data;
+}
+
+/** Alias zgodności wstecznej – jeśli gdzieś było deleteReservation, użyje PATCH */
+export const deleteReservation = cancelMyReservation;

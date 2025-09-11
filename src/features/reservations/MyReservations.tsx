@@ -1,42 +1,56 @@
 import { useEffect, useState } from "react";
 import {
-    Card, Text, Badge, Stack, Title, Group, Divider, Button, Rating, Textarea,
+    Card,
+    Text,
+    Badge,
+    Stack,
+    Title,
+    Group,
+    Divider,
+    Button,
+    Rating,
+    Textarea,
 } from "@mantine/core";
-import {deleteReservation, getMyReservations} from "./api/reservations";
+import {
+    getMyReservations,
+    cancelMyReservation,
+    Reservation,
+    ReservationTable,
+    ReservationStatus,
+} from "./api/reservations";
 import { addReview } from "./api/restaurants";
-type ReservationTable = {
-    table: { id: number; name: string | null; seats: number };
-};
-
-interface Reservation {
-    id: number;
-    date: string;
-    time: string;
-    people: number;
-    review?: { id: number };
-    restaurant: { id: number; name: string; location: string; cuisine: string };
-    tables?: ReservationTable[];
-}
 
 const formatTables = (tables?: ReservationTable[]) => {
     if (!tables || tables.length === 0) return "—";
-    // zliczamy po liczbie miejsc
     const counts = tables.reduce<Record<number, number>>((acc, t) => {
         const s = t.table.seats;
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
     const parts = Object.entries(counts)
-        .sort((a, b) => Number(b[0]) - Number(a[0])) // 6,4,2,1...
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
         .map(([seats, qty]) => `${qty}×${seats}-os.`);
-
-    // nazwy stolików w nawiasie, jeśli są
-    const names = tables
-        .map((t) => t.table.name)
-        .filter(Boolean)
-        .join(", ");
-
+    const names = tables.map((t) => t.table.name).filter(Boolean).join(", ");
     return names ? `${parts.join(", ")} (${names})` : parts.join(", ");
+};
+
+const formatDate = (isoDate: string) =>
+    new Date(isoDate).toLocaleDateString("pl-PL", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    });
+
+const statusBadge = (s: ReservationStatus) => {
+    const color =
+        s === "CONFIRMED"
+            ? "green"
+            : s === "PENDING"
+                ? "yellow"
+                : s === "REJECTED"
+                    ? "orange"
+                    : "gray";
+    return <Badge color={color}>{s}</Badge>;
 };
 
 export const MyReservations = () => {
@@ -48,34 +62,14 @@ export const MyReservations = () => {
 
     const now = new Date();
 
-    const formatDate = (isoDate: string) =>
-        new Date(isoDate).toLocaleDateString("pl-PL", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        });
-
     const fetchReservations = async () => {
         try {
             const data = await getMyReservations();
-            setReservations(data as Reservation[]);
+            // backend już filtruje CANCELLED; na wszelki wypadek odfiltrujemy też tutaj:
+            setReservations(data.filter((r) => r.status !== "CANCELLED"));
         } catch (err) {
             console.error("Błąd pobierania rezerwacji", err);
         }
-    };
-
-    const handleDelete = async (id: number) => {
-        if (!window.confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
-        try {
-            setDeletingId(id);
-            await deleteReservation(id);
-            setReservations((prev) => prev.filter(r => r.id !== id));
-            await fetchReservations();
-        } catch (err) {
-            console.error("Błąd anulowania rezerwacji", err);
-        } finally {
-        setDeletingId(null);                           // NEW
-    }
     };
 
     useEffect(() => {
@@ -84,6 +78,20 @@ export const MyReservations = () => {
 
     const upcoming = reservations.filter((r) => new Date(r.date) >= now);
     const past = reservations.filter((r) => new Date(r.date) < now);
+
+    const handleCancel = async (id: number, status: ReservationStatus) => {
+        if (status !== "PENDING") return;
+        if (!window.confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
+        try {
+            setDeletingId(id);
+            await cancelMyReservation(id); // PATCH /reservations/:id/cancel
+            await fetchReservations();
+        } catch (err) {
+            console.error("Błąd anulowania rezerwacji", err);
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const handleAddReview = async (reservationId: number, restaurantId: number) => {
         if (!rating || !comment.trim()) return;
@@ -109,26 +117,33 @@ export const MyReservations = () => {
             ) : (
                 upcoming.map((res) => (
                     <Card key={res.id} withBorder shadow="sm">
-                        <Group justify="space-between">
-                            <Text fw={700}>{res.restaurant.name}</Text>
+                        <Group justify="space-between" align="center">
+                            <Group gap="xs">
+                                <Text fw={700}>{res.restaurant.name}</Text>
+                                {statusBadge(res.status)}
+                            </Group>
                             <Badge>{res.restaurant.cuisine}</Badge>
                         </Group>
+
                         <Text size="sm" c="dimmed">
                             {res.restaurant.location}
                         </Text>
+
                         <Text size="sm">
                             {formatDate(res.date)} o {res.time} — {res.people} osób
                         </Text>
+
                         <Text size="sm" mt={4} c="dimmed">
                             Stoliki: {formatTables(res.tables)}
                         </Text>
+
                         <Button
                             mt="sm"
                             color="red"
                             size="xs"
-                            onClick={() => handleDelete(res.id)}
-                            loading={deletingId === res.id}   // NEW
-                            disabled={deletingId === res.id}  // NEW
+                            onClick={() => handleCancel(res.id, res.status)}
+                            loading={deletingId === res.id}
+                            disabled={deletingId === res.id || res.status !== "PENDING"}
                         >
                             Anuluj rezerwację
                         </Button>
@@ -143,16 +158,22 @@ export const MyReservations = () => {
             ) : (
                 past.map((res) => (
                     <Card key={res.id} withBorder shadow="xs">
-                        <Group justify="space-between">
-                            <Text fw={700}>{res.restaurant.name}</Text>
+                        <Group justify="space-between" align="center">
+                            <Group gap="xs">
+                                <Text fw={700}>{res.restaurant.name}</Text>
+                                {statusBadge(res.status)}
+                            </Group>
                             <Badge color="gray">{res.restaurant.cuisine}</Badge>
                         </Group>
+
                         <Text size="sm" c="dimmed">
                             {res.restaurant.location}
                         </Text>
+
                         <Text size="sm">
                             {formatDate(res.date)} o {res.time} — {res.people} osób
                         </Text>
+
                         <Text size="sm" mt={4} c="dimmed">
                             Stoliki: {formatTables(res.tables)}
                         </Text>

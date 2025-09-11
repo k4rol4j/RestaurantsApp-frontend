@@ -39,4 +39,7 @@ export const adminApi = {
     }) =>
         api.post('/admin/restaurants', dto).then(r => r.data),
 
+    deleteReservation: (id: number) =>
+        api.delete(`/admin/reservations/${id}`).then(r => r.data),
+
 };
