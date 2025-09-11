@@ -1,7 +1,7 @@
-// AdminLayout.tsx (fragment)
+// src/features/admin/AdminLayout.tsx
 import { Tabs, Group, Button, Container } from '@mantine/core';
-import { useLocation, useNavigate, Link, Navigate } from 'react-router-dom';
-import {useAuth} from "../../hooks/useAuth.ts";
+import {useLocation, useNavigate, Link, Navigate, Outlet} from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 export function AdminLayout() {
     const { isAdmin, loading } = useAuth();
@@ -11,7 +11,6 @@ export function AdminLayout() {
     if (loading) return null;
     if (!isAdmin) return <Navigate to="/" replace />;
 
-    // 'users' | 'restaurants' | 'reservations' | 'reviews'
     const current = loc.pathname.split('/')[2] ?? 'users';
 
     return (
@@ -21,10 +20,7 @@ export function AdminLayout() {
                 <Button component={Link} to="/" variant="light">← Wróć</Button>
             </Group>
 
-            <Tabs
-                value={current}
-                onChange={(v) => v && navigate(`/admin/${v}`)}
-            >
+            <Tabs value={current} onChange={(v) => v && navigate(`/admin/${v}`)}>
                 <Tabs.List>
                     <Tabs.Tab value="users">Użytkownicy</Tabs.Tab>
                     <Tabs.Tab value="restaurants">Restauracje</Tabs.Tab>
@@ -34,7 +30,7 @@ export function AdminLayout() {
             </Tabs>
 
             <div style={{ marginTop: 16 }}>
-                {/* <Outlet /> pod spodem jak miałas */}
+                <Outlet />
             </div>
         </Container>
     );
