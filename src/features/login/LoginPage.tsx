@@ -46,7 +46,7 @@ export const LoginPage = () => {
             if (!meRes.ok) {
                 throw new Error('Session not established');
             }
-            
+
             navigate('/reservations', { replace: true });
         } catch (error: any) {
             const status = error?.response?.status;
