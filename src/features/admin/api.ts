@@ -27,4 +27,16 @@ export const adminApi = {
         api.get(`/admin/reviews`, { params }).then(r => r.data),
     deleteReview: (id: number) =>
         api.delete(`/admin/reviews/${id}`).then(r => r.data),
+
+    createRestaurant: (dto: {
+        name: string;
+        location: string;
+        cuisine: string;
+        ownerId: number;
+        rating?: number;
+        description?: string;
+        capacity?: number;
+    }) =>
+        api.post('/admin/restaurants', dto).then(r => r.data),
+
 };
