@@ -16,6 +16,7 @@ import { register } from '../register/api/register';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconAt, IconLock } from '@tabler/icons-react';
+import {API_URL} from "../../config.ts";
 
 export const LoginPage = () => {
     const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -38,12 +39,15 @@ export const LoginPage = () => {
         try {
             await login(form.values.email, form.values.password);
 
-            // Flaga, że jesteśmy świeżo po logowaniu
-            sessionStorage.setItem('justLoggedIn', '1');
-
-            // Od razu przekierowanie, bez czekania na /auth/me
+            // natychmiastowa weryfikacja sesji (cookie + JWT)
+            const meRes = await fetch(`${API_URL}/auth/me`, {
+                credentials: 'include',
+            });
+            if (!meRes.ok) {
+                throw new Error('Session not established');
+            }
+            
             navigate('/reservations', { replace: true });
-
         } catch (error: any) {
             const status = error?.response?.status;
             const message =

@@ -1,14 +1,16 @@
-import {API_URL} from "../../../config.ts";
+import { API_URL } from "../../../config";
 
 export const login = async (username: string, password: string) => {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Basic ${window.btoa(username + ":" + password)}`,
+            Authorization: `Basic ${btoa(`${username}:${password}`)}`,
         },
-        credentials: 'include',
+        credentials: 'include', // WAŻNE
     });
-    if (response.status !== 200) throw new Error('Login failed.');
-    return await response.text();
-}
+    if (!res.ok) throw new Error('Login failed');
+
+    const data = await res.json(); // { message, access_token }
+    return data;
+};

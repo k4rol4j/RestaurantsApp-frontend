@@ -1,5 +1,3 @@
-// src/features/reservations/RestaurantsList.tsx
-
 import {
     Text,
     Group,
