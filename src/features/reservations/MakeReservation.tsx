@@ -1,106 +1,124 @@
-import { Box, Title, TextInput, NumberInput, Group, Button, Stack, Notification, Card, Text, Badge, rem } from "@mantine/core";
-import {Restaurant, useMakeReservation} from "./hooks/useMakeReservation.ts";
+// src/features/reservations/MakeReservation.tsx
 import { useEffect, useState } from "react";
-import { listRestaurants } from "./api/reservations.ts"; // Wczytaj funkcję listRestaurants
+import { Card, Stack, Title, Text, Group, Button, Select, NumberInput } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import {
+    listRestaurants,
+    makeReservation,
+    type RestaurantLite,
+} from "./api/reservations";
+import {DateInput} from "@mantine/dates";
 
-export const MakeReservation = () => {
-    const {
-        formData,
-        setFormData,
-        selectedRestaurant,
-        setSelectedRestaurant,
-        error,
-        setError,
-        submitted,
-        setSubmitted,
-        handleSubmit,
-    } = useMakeReservation();
+export default function MakeReservation() {
+    const [restaurants, setRestaurants] = useState<RestaurantLite[]>([]);
+    const [restaurantId, setRestaurantId] = useState<number | null>(null);
+    const [date, setDate] = useState<Date | null>(null);
+    const [time, setTime] = useState<string>("18:00");
+    const [people, setPeople] = useState<number>(2);
+    const [submitting, setSubmitting] = useState(false);
 
-    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-
-    // Wykonaj zapytanie do API, aby pobrać restauracje
+    // wczytaj listę restauracji
     useEffect(() => {
-        listRestaurants()
-            .then((response) => setRestaurants(response)) // Pobierz restauracje
-            .catch((error) => console.error("Błąd podczas ładowania restauracji", error));
-    }, []); // Pusty array oznacza, że efekt wykona się tylko raz przy załadowaniu komponentu
+        (async () => {
+            try {
+                const data = await listRestaurants();
+                setRestaurants(data); // <- RestaurantLite[]
+            } catch (e) {
+                console.error(e);
+                notifications.show({
+                    color: "red",
+                    title: "Błąd",
+                    message: "Nie udało się pobrać restauracji",
+                });
+            }
+        })();
+    }, []);
+
+    const options = restaurants.map((r) => ({
+        value: String(r.id),
+        label: `${r.name} — ${r.location} (${r.cuisine})`,
+    }));
+
+    const onSubmit = async () => {
+        if (!restaurantId || !date || !time || !people) {
+            notifications.show({
+                color: "yellow",
+                title: "Uzupełnij dane",
+                message: "Wybierz restaurację, datę, godzinę i liczbę osób.",
+            });
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await makeReservation({
+                restaurantId,
+                date: date.toISOString(), // backend i tak normalizuje startAt
+                time,
+                people,
+            });
+            notifications.show({
+                color: "green",
+                title: "Sukces",
+                message: "Rezerwacja utworzona jako PENDING.",
+            });
+        } catch (e: unknown) {
+            console.error(e);
+            notifications.show({
+                color: "red",
+                title: "Błąd",
+                message: "Nie udało się utworzyć rezerwacji.",
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
-        <Box w={rem(400)} mx="auto" p="lg">
-            <Title order={2} mb="lg">
-                Dokonaj rezerwacji
-            </Title>
-            {submitted ? (
-                <Notification color="teal" title="Rezerwacja potwierdzona" withCloseButton onClose={() => setSubmitted(false)}>
-                    Twoja rezerwacja dla {formData.guests} gości w {selectedRestaurant?.name} jest potwierdzona na {formData.date}.
-                </Notification>
-            ) : (
-                <>
-                    <TextInput
-                        label="Imię"
-                        placeholder="Twoje imię"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        mb="sm"
+        <Stack>
+            <Title order={2}>Zrób rezerwację</Title>
+            <Card withBorder>
+                <Stack>
+                    <Select
+                        label="Restauracja"
+                        placeholder="Wybierz restaurację"
+                        data={options}
+                        searchable
+                        value={restaurantId ? String(restaurantId) : null}
+                        onChange={(v) => setRestaurantId(v ? Number(v) : null)}
                     />
-                    <TextInput
-                        label="Data"
-                        placeholder="Wybierz datę"
-                        type="date"
-                        value={formData.date}
-                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        mb="sm"
-                    />
-                    <NumberInput
-                        label="Liczba gości"
-                        placeholder="1"
-                        value={formData.guests}
-                        onChange={(value: string | number) => setFormData({ ...formData, guests: typeof value === "number" ? value : 1 })}
-                        min={1}
-                        mb="sm"
-                    />
-                    <div>
-                        <Title order={3} mt="md">Wybierz restaurację:</Title>
-                        <Stack gap={rem(8)}>
-                            {restaurants.map((restaurant) => (
-                                <Card
-                                    key={restaurant.id}
-                                    shadow="sm"
-                                    p="md"
-                                    radius="md"
-                                    withBorder
-                                    onClick={() => {
-                                        setFormData({ ...formData, restaurantId: restaurant.id });
-                                        setSelectedRestaurant(restaurant);
-                                    }}
-                                    style={{
-                                        cursor: "pointer",
-                                        backgroundColor: formData.restaurantId === restaurant.id ? "#e0f7fa" : "white"
-                                    }}
-                                >
-                                    <Group justify="space-between">
-                                        <Text fw={700}>{restaurant.name}</Text>
-                                        <Badge color="blue" variant="light">
-                                            {restaurant.cuisine}
-                                        </Badge>
-                                    </Group>
-                                </Card>
-                            ))}
-                        </Stack>
-                    </div>
-                    {error && (
-                        <Notification color="red" title="Błąd" withCloseButton onClose={() => setError(null)}>
-                            {error}
-                        </Notification>
-                    )}
-                    <Group justify="space-between" mt="lg">
-                        <Button variant="default" onClick={() => setFormData({ name: "", guests: 1, date: "", restaurantId: null , durationMinutes: 90})}>
-                            Reset
-                        </Button>
-                        <Button onClick={handleSubmit}>Rezerwuj</Button>
+                    <Group grow>
+                        <DateInput
+                            label="Data"
+                            placeholder="Wybierz datę"
+                            value={date}
+                            onChange={(d) => setDate(d)}
+                        />
+                        <Select
+                            label="Godzina"
+                            value={time}
+                            onChange={(v) => setTime(v || "18:00")}
+                            data={[
+                                "12:00","12:30","13:00","13:30","14:00",
+                                "17:00","17:30","18:00","18:30","19:00","19:30","20:00",
+                            ]}
+                        />
+                        <NumberInput
+                            label="Osoby"
+                            min={1}
+                            max={12}
+                            value={people}
+                            onChange={(v) => setPeople(Number(v) || 1)}
+                        />
                     </Group>
-                </>
-            )}
-        </Box>
+                    <Button onClick={onSubmit} loading={submitting}>
+                        Zarezerwuj
+                    </Button>
+                    <Text size="sm" c="dimmed">
+                        Rezerwacja zostanie utworzona ze statusem <b>PENDING</b>. Właściciel ją
+                        potwierdzi lub odrzuci. Możesz anulować rezerwację dopóki ma status PENDING.
+                    </Text>
+                </Stack>
+            </Card>
+        </Stack>
     );
-};
+}
