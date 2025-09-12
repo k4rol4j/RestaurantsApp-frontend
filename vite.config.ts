@@ -4,9 +4,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// ⚠️ Ustal backend pod PWA (pełny https)
+// ⚠️ pełny URL do backendu, np. VITE_API_URL=https://restaurantsapp-backend.onrender.com/api
 const API_URL = process.env.VITE_API_URL || 'https://restaurantsapp-backend.onrender.com/api';
-const API_ORIGIN = new URL(API_URL).origin; // np. https://restaurantsapp-backend.onrender.com
+const API_ORIGIN = new URL(API_URL).origin;
+
+// pomocniczo zamieniamy string originu na RegExp
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const API_ORIGIN_RE = new RegExp(`^${escapeRe(API_ORIGIN)}/`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,39 +25,38 @@ export default defineConfig({
             registerType: 'autoUpdate',
             injectRegister: 'auto',
             devOptions: { enabled: false },
-            // szybkie aktualizacje SW
             workbox: {
                 skipWaiting: true,
                 clientsClaim: true,
-
                 cleanupOutdatedCaches: true,
                 navigateFallback: '/index.html',
                 // nie przechwytuj nawigacji do API ani obrazów
                 navigateFallbackDenylist: [/^\/api\//, /\.(?:png|jpe?g|svg|webp|gif)$/i],
 
                 runtimeCaching: [
-                    // OBRAZY - ok, CacheFirst
+                    // obrazy — CacheFirst
                     {
                         urlPattern: /\.(?:png|jpe?g|svg|webp|gif)$/i,
                         handler: 'CacheFirst',
                         options: {
                             cacheName: 'images',
-                            expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                            expiration: {
+                                maxEntries: 80,
+                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 dni
+                            },
                         },
                     },
 
-                    // API (same-origin /api/*) – bez cache
-                    // API (same-origin /api/*) – bez cache
+                    // API same-origin (/api/*) — NetworkOnly (bez cache)
                     {
-                        urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+                        urlPattern: /^\/api\//,
                         handler: 'NetworkOnly',
                         options: { cacheName: 'api-no-cache' },
                     },
 
-
-                    // API (cross-origin na backend) – bez cache
+                    // API cross-origin (pełny backend origin) — NetworkOnly
                     {
-                        urlPattern: ({ url }) => url.origin === API_ORIGIN,
+                        urlPattern: API_ORIGIN_RE,
                         handler: 'NetworkOnly',
                         options: { cacheName: 'api-no-cache-x' },
                     },
