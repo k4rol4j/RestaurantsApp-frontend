@@ -1,20 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export default defineConfig({
     base: '/',
     build: { outDir: 'dist' },
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, 'src'), // <── teraz zadziała
+        },
+    },
     plugins: [
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            injectRegister: 'auto', // wstrzyknie rejestrację sw
-            includeAssets: [
-                'favicon.ico',
-                'robots.txt',
-                'apple-touch-icon.png',
-            ],
+            injectRegister: 'auto',
+            includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
             workbox: {
                 cleanupOutdatedCaches: true,
                 navigateFallback: '/index.html',
@@ -23,7 +29,6 @@ export default defineConfig({
                     /\.(?:png|jpe?g|svg|webp|gif)$/i,
                 ],
                 runtimeCaching: [
-                    // Obrazy: cache-first
                     {
                         urlPattern: /\.(?:png|jpe?g|svg|webp|gif)$/i,
                         handler: 'CacheFirst',
@@ -32,7 +37,6 @@ export default defineConfig({
                             expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
                         },
                     },
-                    // API: network-first
                     {
                         urlPattern: /^\/api\//,
                         handler: 'NetworkFirst',
@@ -58,10 +62,8 @@ export default defineConfig({
                 theme_color: '#ffffff',
                 orientation: 'portrait',
                 icons: [
-                    // klasyczne
                     { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
                     { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-                    // maskable (żeby ładnie wyglądało na Androidzie)
                     { src: 'icon-192-maskable.png', sizes: '192x192', type: 'image/png', purpose: 'maskable any' },
                     { src: 'icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable any' },
                 ],
