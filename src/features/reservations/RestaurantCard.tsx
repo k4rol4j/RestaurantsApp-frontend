@@ -1,9 +1,10 @@
-import { Card, Text, Group, Badge, Button, ActionIcon, Image } from "@mantine/core";
+import { Card, Text, Group, Badge, Button, ActionIcon, Box } from "@mantine/core";
 import { IconHeart, IconHeartFilled } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-import { Carousel, CarouselSlide } from "@mantine/carousel";
-import { Restaurant } from "./hooks/useMakeReservation";
+import { Carousel } from "@mantine/carousel";
 import "@mantine/carousel/styles.css";
+import SafeImage from "../../components/SafeImage";
+import { Restaurant } from "./hooks/useMakeReservation";
 
 interface Props {
     restaurant: Restaurant;
@@ -14,46 +15,46 @@ interface Props {
 export const RestaurantCard = ({ restaurant, isFavorite, onToggleFavorite }: Props) => {
     const images =
         typeof restaurant.imageGallery === "string" && restaurant.imageGallery.length > 0
-            ? restaurant.imageGallery.split(",").map((url) => url.trim())
+            ? restaurant.imageGallery.split(",").map((url) => url.trim()).filter(Boolean)
             : [];
 
     return (
         <Card shadow="sm" p="lg" radius="md" withBorder>
             {images.length > 0 ? (
-                <Carousel
-                    height={180}
-                    withIndicators
-                    loop
-                    slideGap="md"
-                    slideSize="100%"
-                    align="start"
-                    styles={{
-                        indicator: { backgroundColor: "gray" },
-                        control: { color: "black" },
-                    }}
-                    mb="sm"
-                >
-                    {images.map((url, index) => (
-                        <CarouselSlide key={index}>
-                            <Image
-                                src={url}
-                                height={180}
-                                fit="cover"
-                                radius="md"
-                                alt={`${restaurant.name} ${index + 1}`}
-                            />
-                        </CarouselSlide>
-                    ))}
-                </Carousel>
+                <Box mb="sm">
+                    <Carousel
+                        height={180}
+                        withIndicators
+                        loop
+                        slideGap="md"
+                        slideSize="100%"
+                        align="start"
+                        styles={{
+                            indicator: { backgroundColor: "gray" },
+                            control: { color: "black" },
+                        }}
+                    >
+                        {images.map((url, index) => (
+                            <Carousel.Slide key={index}>
+                                <Box style={{ borderRadius: 8, overflow: "hidden" }}>
+                                    <SafeImage
+                                        src={url}
+                                        alt={`${restaurant.name} ${index + 1}`}
+                                        style={{ width: "100%", height: 180 }}
+                                    />
+                                </Box>
+                            </Carousel.Slide>
+                        ))}
+                    </Carousel>
+                </Box>
             ) : (
-                <Image
-                    src="https://via.placeholder.com/400x180?text=Brak+zdjęcia"
-                    height={180}
-                    fit="cover"
-                    radius="md"
-                    alt="Brak zdjęcia"
-                    mb="sm"
-                />
+                <Box mb="sm" style={{ borderRadius: 8, overflow: "hidden" }}>
+                    <SafeImage
+                        src={restaurant.imageUrl}
+                        alt={restaurant.name}
+                        style={{ width: "100%", height: 180 }}
+                    />
+                </Box>
             )}
 
             <Group justify="space-between" mt="md">
