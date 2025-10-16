@@ -1,30 +1,21 @@
 import axios from 'axios';
-
-// Upewnij się, że to jest pełny HTTPS URL, np.
-// VITE_API_URL=https://restaurantsapp-backend.onrender.com/api
-const BASE_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from './config.ts';
 
 export const api = axios.create({
-    baseURL: BASE_URL,
-    withCredentials: true, // cookies always
+    baseURL: API_URL,
+    withCredentials: true,
 });
 
-// helper do Basic (obsługa nie-ASCII)
-const toBasic = (email: string, password: string) =>
-    'Basic ' + btoa(unescape(encodeURIComponent(`${email}:${password}`)));
-
-// --- AUTH
+// AUTH (jeśli już masz, zostaw swój)
 export async function login(email: string, password: string) {
-    await api.post('/auth/login', null, {
-        headers: { Authorization: toBasic(email, password) },
-    });
+    const basic = btoa(`${email}:${password}`);
+    await api.post('/auth/login', null, { headers: { Authorization: `Basic ${basic}` } });
     return me();
 }
-
 export const me = () => api.get('/auth/me').then(r => r.data);
-export const logout = () => api.post('/auth/logout').then(r => r.data);
+export const logout = () => api.post('/auth/logout');
 
-// --- OWNER PANEL
+// OWNER PANEL API
 export const getProfile = (rid: number) =>
     api.get(`/restaurants/${rid}/panel/profile`).then(r => r.data);
 
@@ -40,14 +31,11 @@ export const createTable = (rid: number, dto: { name?: string; seats: number; is
 export const updateTable = (rid: number, tableId: number, dto: any) =>
     api.patch(`/restaurants/${rid}/panel/tables/${tableId}`, dto).then(r => r.data);
 
-export const listReservations = (
-    rid: number,
-    params?: { date?: string; status?: 'PENDING'|'CONFIRMED'|'REJECTED'|'CANCELLED' }
-) => api.get(`/restaurants/${rid}/panel/reservations`, { params }).then(r => r.data);
+export const listReservations = (rid: number, params?: { date?: string; status?: 'PENDING'|'CONFIRMED'|'REJECTED'|'CANCELLED' }) =>
+    api.get(`/restaurants/${rid}/panel/reservations`, { params }).then(r => r.data);
 
-export const setReservationStatus = (
-    rid: number, reservationId: number, status: 'PENDING'|'CONFIRMED'|'REJECTED'|'CANCELLED'
-) => api.patch(`/restaurants/${rid}/panel/reservations/${reservationId}/status`, { status }).then(r => r.data);
+export const setReservationStatus = (rid: number, reservationId: number, status: 'PENDING'|'CONFIRMED'|'REJECTED'|'CANCELLED') =>
+    api.patch(`/restaurants/${rid}/panel/reservations/${reservationId}/status`, { status }).then(r => r.data);
 
 export const assignTable = (rid: number, reservationId: number, tableId: number) =>
     api.post(`/restaurants/${rid}/panel/reservations/${reservationId}/assign-table`, { tableId }).then(r => r.data);
@@ -60,3 +48,4 @@ export const getDashboard = (rid: number) =>
 
 export const myRestaurants = () =>
     api.get('/restaurants/my').then(r => r.data as { id: number; name: string }[]);
+
