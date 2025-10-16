@@ -1,7 +1,16 @@
-import React from "react";
-import { Group, Select, Switch, Text, Stack, Divider } from "@mantine/core";
+import { Group, Text, Switch, Box, Stack, Divider } from "@mantine/core";
+import {TimeInput} from "@mantine/dates";
 
-const days = [
+type DayHours = {
+    open: string;
+    close: string;
+};
+
+type OpeningHours = {
+    [day: string]: DayHours | null; // null = zamknięte
+};
+
+const DAYS: { key: string; label: string }[] = [
     { key: "monday", label: "Poniedziałek" },
     { key: "tuesday", label: "Wtorek" },
     { key: "wednesday", label: "Środa" },
@@ -11,59 +20,72 @@ const days = [
     { key: "sunday", label: "Niedziela" },
 ];
 
-const hours = Array.from({ length: 24 }, (_, h) =>
-    ["00", "15", "30", "45"].map((m) => ({
-        value: `${String(h).padStart(2, "0")}:${m}`,
-        label: `${String(h).padStart(2, "0")}:${m}`,
-    }))
-).flat();
-
-export type OpeningHours = Record<string, { open: string; close: string } | null>;
-
-export function OpeningHoursEditor({
-                                       value,
-                                       onChange,
-                                   }: {
+type Props = {
     value: OpeningHours;
-    onChange: (val: OpeningHours) => void;
-}) {
-    const updateDay = (day: string, data: any) => onChange({ ...value, [day]: data });
+    onChange: (v: OpeningHours) => void;
+};
+
+export function OpeningHoursEditor({ value, onChange }: Props) {
+    const updateDay = (day: string, patch: Partial<DayHours> | null) => {
+        const copy: OpeningHours = { ...value };
+        if (patch === null) {
+            copy[day] = null; // zamknięte
+        } else {
+            copy[day] = { ...(copy[day] ?? { open: "09:00", close: "17:00" }), ...patch };
+        }
+        onChange(copy);
+    };
 
     return (
         <Stack gap="xs">
-            {days.map((d) => {
-                const dayData = value?.[d.key];
-                const closed = dayData == null;
+            {DAYS.map(({ key, label }, i) => {
+                const day = value[key] ?? { open: "09:00", close: "17:00" };
+                const closed = value[key] === null;
+
                 return (
-                    <React.Fragment key={d.key}>
-                        <Group justify="space-between">
-                            <Text w={120}>{d.label}</Text>
+                    <Box
+                        key={key}
+                        style={{
+                            backgroundColor: closed ? "rgba(240,240,240,0.6)" : "white",
+                            borderRadius: 8,
+                            border: "1px solid #e0e0e0",
+                            padding: "0.6rem 0.8rem",
+                        }}
+                    >
+                        <Group justify="space-between" align="center">
+                            <Text fw={500} w={120}>
+                                {label}
+                            </Text>
+                            <Group gap="xs" grow>
+                                <TimeInput
+                                    label="od"
+                                    value={day.open}
+                                    onChange={(e) => updateDay(key, { open: e.currentTarget.value })}
+                                    disabled={closed}
+                                    styles={{
+                                        input: { textAlign: "center" },
+                                    }}
+                                />
+                                <TimeInput
+                                    label="do"
+                                    value={day.close}
+                                    onChange={(e) => updateDay(key, { close: e.currentTarget.value })}
+                                    disabled={closed}
+                                    styles={{
+                                        input: { textAlign: "center" },
+                                    }}
+                                />
+                            </Group>
+
                             <Switch
                                 label="Zamknięte"
                                 checked={closed}
-                                onChange={(e) =>
-                                    updateDay(d.key, e.currentTarget.checked ? null : { open: "10:00", close: "22:00" })
-                                }
+                                onChange={(e) => updateDay(key, e.currentTarget.checked ? null : day)}
+                                color="gray"
                             />
-                            {!closed && (
-                                <Group>
-                                    <Select
-                                        data={hours}
-                                        label="Od"
-                                        value={dayData?.open}
-                                        onChange={(v) => updateDay(d.key, { ...dayData, open: v ?? "10:00" })}
-                                    />
-                                    <Select
-                                        data={hours}
-                                        label="Do"
-                                        value={dayData?.close}
-                                        onChange={(v) => updateDay(d.key, { ...dayData, close: v ?? "22:00" })}
-                                    />
-                                </Group>
-                            )}
                         </Group>
-                        <Divider />
-                    </React.Fragment>
+                        {i < DAYS.length - 1 && <Divider mt="xs" />}
+                    </Box>
                 );
             })}
         </Stack>
