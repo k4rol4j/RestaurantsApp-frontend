@@ -1,32 +1,24 @@
-import React from "react";
-import {API_URL} from "../config.ts";
+import React from 'react';
 
-const API_ORIGIN = API_URL.replace(/\/api$/, "");
+const API_URL = import.meta.env.VITE_API_URL as string; // np. https://.../api
+const API_ORIGIN = API_URL.replace(/\/api$/, '');
 
-type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> & {
+type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
     src?: string | null;
     fallback?: string;
 };
 
-export default function SafeImage({
-                                      src,
-                                      fallback = "/placeholder-restaurant.svg",
-                                      style,
-                                      ...rest
-                                  }: Props) {
+export default function SafeImage({ src, fallback = '/placeholder-restaurant.svg', style, ...rest }: Props) {
     const [broken, setBroken] = React.useState(false);
-    const finalSrc =
-        !src || broken
-            ? fallback
-            : src.startsWith("/images/")
-                ? `${API_ORIGIN}${src}`
-                : src;
+    const fixed =
+        !src ? null : src.startsWith('/images/') ? `${API_ORIGIN}${src}` : src;
+    const finalSrc = !fixed || broken ? fallback : fixed;
 
     return (
         <img
             src={finalSrc}
             onError={() => setBroken(true)}
-            style={{ objectFit: "cover", ...style }}
+            style={{ objectFit: 'cover', ...style }}
             {...rest}
         />
     );

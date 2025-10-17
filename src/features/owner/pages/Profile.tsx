@@ -1,14 +1,14 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { getProfile, updateProfile } from '../../../api';
+import { getProfile, updateProfile, uploadImage } from '../../../api';
 import {
     Card, Textarea, NumberInput, Button, Title, Grid, Stack,
     Group, Table, Switch, ActionIcon, Tooltip, Divider, TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import {OpeningHoursEditor} from "../../../components/OpeningHoursEditor.tsx";
-import ImageUpload from "../../../components/ImageUpload.tsx";
+import { OpeningHoursEditor } from '../../../components/OpeningHoursEditor.tsx';
+import SafeImage from '../../../components/SafeImage.tsx';
 
 type MenuItem = {
     name: string;
@@ -23,6 +23,7 @@ export default function Profile() {
     const [data, setData] = React.useState<any>(null);
     const [menu, setMenu] = React.useState<MenuItem[]>([]);
     const [saving, setSaving] = React.useState(false);
+    const [uploading, setUploading] = React.useState(false);
 
     React.useEffect(() => {
         getProfile(Number(rid)).then((d) => {
@@ -39,6 +40,20 @@ export default function Profile() {
 
     const changeItem = (idx: number, patch: Partial<MenuItem>) =>
         setMenu((m) => m.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+
+    const handleImageUpload = async (file: File | null) => {
+        if (!file) return;
+        try {
+            setUploading(true);
+            const url = await uploadImage(file); // faktyczny upload do backendu
+            setData({ ...data, imageUrl: url });
+            notifications.show({ color: 'green', message: 'Zdjęcie przesłane pomyślnie' });
+        } catch {
+            notifications.show({ color: 'red', message: 'Błąd przesyłania zdjęcia' });
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const save = async () => {
         setSaving(true);
@@ -69,7 +84,6 @@ export default function Profile() {
                     <Grid.Col span={{ base: 12, md: 6 }}>
                         <TextInput label="Nazwa" value={data.name} readOnly />
 
-                        {/* 🕒 Nowy edytor godzin otwarcia */}
                         <Title order={5} mt="md" mb="xs">Godziny otwarcia</Title>
                         <OpeningHoursEditor
                             value={(() => {
@@ -94,10 +108,46 @@ export default function Profile() {
                     </Grid.Col>
 
                     <Grid.Col span={{ base: 12, md: 6 }}>
-                        <ImageUpload
-                            value={data.imageUrl}
-                            onChange={(url) => setData({ ...data, imageUrl: url })}
-                        />
+                        {/* Upload + podgląd */}
+                        <Title order={5} mb="xs">Obrazek (baner)</Title>
+                        <Group align="flex-start" gap="md">
+                            <Button
+                                component="label"
+                                loading={uploading}
+                                disabled={uploading}
+                            >
+                                {uploading ? 'Wysyłanie...' : 'Wybierz obrazek'}
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={(e) => handleImageUpload(e.target.files?.[0] ?? null)}
+                                />
+                            </Button>
+
+                            <div
+                                style={{
+                                    width: 220,
+                                    height: 150,
+                                    borderRadius: 8,
+                                    border: '1px solid #ddd',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: '#f4f5f7',
+                                }}
+                            >
+                                {data.imageUrl ? (
+                                    <SafeImage
+                                        src={data.imageUrl}
+                                        alt="Podgląd"
+                                        style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                                    />
+                                ) : (
+                                    <p style={{ color: '#999' }}>Brak zdjęcia</p>
+                                )}
+                            </div>
+                        </Group>
 
                         <Textarea
                             mt="md"

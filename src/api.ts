@@ -55,7 +55,7 @@ export const uploadImage = async (file: File) => {
     const res = await api.post('/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data.url as string;
+    return res.data.url as string; // np. /images/logo_restaurants/xxxx.png
 };
 
 
