@@ -1,8 +1,8 @@
 import React from 'react';
 
 type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
-    src?: string | null;    // akceptuje też null
-    fallback?: string;      // domyślny lokalny placeholder
+    src?: string | null;
+    fallback?: string;
 };
 
 export default function SafeImage({
@@ -12,13 +12,25 @@ export default function SafeImage({
                                       ...rest
                                   }: Props) {
     const [broken, setBroken] = React.useState(false);
-    const finalSrc = !src || broken ? fallback : src;
+
+    // 👇 jeśli ścieżka jest względna, doklej backend URL
+    const fixedSrc =
+        src && !src.startsWith('http')
+            ? `https://restaurantsapp-backend.onrender.com${src}`
+            : src;
+
+    const finalSrc = !fixedSrc || broken ? fallback : fixedSrc;
 
     return (
         <img
             src={finalSrc}
             onError={() => setBroken(true)}
-            style={{ objectFit: 'cover', ...style }}
+            style={{
+                objectFit: 'cover',
+                width: '100%',
+                borderRadius: '8px',
+                ...style,
+            }}
             {...rest}
         />
     );
