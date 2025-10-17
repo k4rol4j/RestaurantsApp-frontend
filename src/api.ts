@@ -49,3 +49,13 @@ export const getDashboard = (rid: number) =>
 export const myRestaurants = () =>
     api.get('/restaurants/my').then(r => r.data as { id: number; name: string }[]);
 
+export const uploadImage = async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await api.post('/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.url as string;
+};
+
+

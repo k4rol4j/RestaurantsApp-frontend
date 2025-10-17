@@ -1,5 +1,6 @@
 import React from "react";
 import { FileButton, Button, Group, Text } from "@mantine/core";
+import {uploadImage} from "../api.ts";
 
 type Props = {
     value?: string;
@@ -19,15 +20,16 @@ export default function ImageUpload({ value, onChange }: Props) {
         }
     }, [value, preview]);
 
-    const handleFile = (file: File | null) => {
+    const handleFile = async (file: File | null) => {
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const url = reader.result as string;
-            setPreview(url);
-            onChange(url);
-        };
-        reader.readAsDataURL(file);
+        try {
+            const uploadedUrl = await uploadImage(file);
+            setPreview(`https://restaurantsapp-backend.onrender.com${uploadedUrl}`);
+            onChange(uploadedUrl); // zapisz ścieżkę względną do bazy
+        } catch (e) {
+            console.error(e);
+            alert("Błąd podczas przesyłania pliku.");
+        }
     };
 
     return (
