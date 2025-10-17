@@ -9,7 +9,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { makeReservation } from "./api/reservations";
-import { getFreeTables } from "./api/tables"; // NOWE
+import { getFreeTables } from "./api/tables";
 import dayjs from "dayjs";
 import "dayjs/locale/pl";
 dayjs.locale("pl");
@@ -43,9 +43,10 @@ export const ReservationForm: React.FC<{
     const [durationMinutes, setDurationMinutes] = useState<number>(90);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
+    const [timeSlots, setTimeSlots] = useState<
+        { value: string; label: string }[]
+    >([]);
 
-    // NOWE: dostępność stolików
     const [freeSummary, setFreeSummary] = useState<string>("");
     const [checkingFree, setCheckingFree] = useState(false);
 
@@ -55,8 +56,12 @@ export const ReservationForm: React.FC<{
             return acc;
         }, {});
         const order = [1, 2, 4, 6, 8];
-        const parts = order.filter(s => counts[s]).map(s => `${counts[s]}×${s}-os.`);
-        return parts.length ? `Dostępne: ${parts.join(", ")}` : "Brak wolnych stolików w tym czasie";
+        const parts = order
+            .filter((s) => counts[s])
+            .map((s) => `${counts[s]}×${s}-os.`);
+        return parts.length
+            ? `Dostępne: ${parts.join(", ")}`
+            : "Brak wolnych stolików w tym czasie";
     };
 
     useEffect(() => {
@@ -90,7 +95,6 @@ export const ReservationForm: React.FC<{
         }
     }, [restaurant, date]);
 
-    // NOWE: odświeżanie dostępności stolików
     useEffect(() => {
         const canFetch = restaurantId && date && time && durationMinutes;
         if (!canFetch) {
@@ -120,18 +124,73 @@ export const ReservationForm: React.FC<{
             }
         })();
 
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [restaurantId, date, time, durationMinutes]);
 
     const handleSubmit = async () => {
         try {
-            await makeReservation({ restaurantId, date, time, people, durationMinutes });
+            const plToEnDays: Record<string, string> = {
+                "poniedziałek": "monday",
+                "wtorek": "tuesday",
+                "środa": "wednesday",
+                "czwartek": "thursday",
+                "piątek": "friday",
+                "sobota": "saturday",
+                "niedziela": "sunday",
+            };
+
+            const plDay = dayjs(date).format("dddd").toLowerCase();
+            const day = plToEnDays[plDay];
+            const hours = JSON.parse(restaurant.openingHours || "{}")[day];
+
+            if (hours?.open && hours?.close && time) {
+                const [startH, startM] = time.split(":").map(Number);
+                const [openH, openM] = hours.open.split(":").map(Number);
+                const [closeH, closeM] = hours.close.split(":").map(Number);
+
+                const start = dayjs().hour(startH).minute(startM);
+                const openTime = dayjs().hour(openH).minute(openM);
+                const closeTime = dayjs().hour(closeH).minute(closeM);
+                const end = start.add(durationMinutes, "minute");
+
+                if (start.isBefore(openTime)) {
+                    setError(`Restauracja otwiera się o ${hours.open}`);
+                    return;
+                }
+                if (end.isAfter(closeTime)) {
+                    setError(
+                        `Wybierz krótszy czas trwania — restauracja zamyka się o ${hours.close}`
+                    );
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Nie udało się zweryfikować godzin otwarcia:", e);
+        }
+
+        try {
+            await makeReservation({
+                restaurantId,
+                date,
+                time,
+                people,
+                durationMinutes,
+            });
             setSuccess(true);
             setError(null);
         } catch (e: any) {
             console.error("Błąd rezerwacji:", e);
             setSuccess(false);
-            setError(e?.message || "Wystąpił błąd podczas rezerwacji.");
+
+            if (e?.response?.status === 400 || e?.response?.status === 404) {
+                setError(
+                    "Nie można zarezerwować — sprawdź godzinę i długość rezerwacji."
+                );
+            } else {
+                setError(e?.message || "Wystąpił błąd podczas rezerwacji.");
+            }
         }
     };
 
@@ -193,9 +252,11 @@ export const ReservationForm: React.FC<{
                 onChange={(val) => setDurationMinutes(val ? parseInt(val) : 90)}
             />
 
-            {(date && time) && (
+            {date && time && (
                 <div style={{ fontSize: 12, opacity: 0.8 }}>
-                    {checkingFree ? "Sprawdzam dostępność stolików…" : freeSummary}
+                    {checkingFree
+                        ? "Sprawdzam dostępność stolików…"
+                        : freeSummary}
                 </div>
             )}
 
