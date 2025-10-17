@@ -103,12 +103,19 @@ export default function Profile() {
 
                         <Textarea
                             mt="md"
-                            label="Opis"
+                            label="Opis restauracji"
+                            autosize
                             minRows={6}
+                            maxRows={20}
+                            styles={{
+                                input: {
+                                    fontSize: '15px',
+                                    lineHeight: 1.6,
+                                    padding: '12px',
+                                },
+                            }}
                             value={data.description || ''}
-                            onChange={(e) =>
-                                setData({ ...data, description: e.currentTarget.value })
-                            }
+                            onChange={(e) => setData({ ...data, description: e.currentTarget.value })}
                         />
                     </Grid.Col>
                 </Grid>
