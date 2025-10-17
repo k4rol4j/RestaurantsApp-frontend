@@ -94,8 +94,6 @@ export default function Profile() {
                     </Grid.Col>
 
                     <Grid.Col span={{ base: 12, md: 6 }}>
-                        {/* 🖼️ Nowy uploader z SafeImage */}
-                        <Title order={5}>Obrazek (baner)</Title>
                         <ImageUpload
                             value={data.imageUrl}
                             onChange={(url) => setData({ ...data, imageUrl: url })}
