@@ -2,13 +2,25 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { getProfile, updateProfile, uploadImage } from '../../../api';
 import {
-    Card, Textarea, NumberInput, Button, Title, Grid, Stack,
-    Group, Table, Switch, ActionIcon, Tooltip, Divider, TextInput,
+    Card,
+    Textarea,
+    NumberInput,
+    Button,
+    Title,
+    Grid,
+    Stack,
+    Group,
+    Table,
+    Switch,
+    ActionIcon,
+    Tooltip,
+    Divider,
+    TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { OpeningHoursEditor } from '../../../components/OpeningHoursEditor.tsx';
-import SafeImage from '../../../components/SafeImage.tsx';
+import { OpeningHoursEditor } from '../../../components/OpeningHoursEditor';
+import SafeImage from '../../../components/SafeImage';
 
 type MenuItem = {
     name: string;
@@ -35,20 +47,22 @@ export default function Profile() {
     const addItem = () =>
         setMenu((m) => [...m, { name: '', price: 0, category: '', isAvailable: true }]);
 
-    const removeItem = (idx: number) =>
-        setMenu((m) => m.filter((_, i) => i !== idx));
+    const removeItem = (idx: number) => setMenu((m) => m.filter((_, i) => i !== idx));
 
     const changeItem = (idx: number, patch: Partial<MenuItem>) =>
         setMenu((m) => m.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
 
+    // ✅ poprawione przesyłanie zdjęcia
     const handleImageUpload = async (file: File | null) => {
         if (!file) return;
         try {
             setUploading(true);
-            const url = await uploadImage(file); // faktyczny upload do backendu
-            setData({ ...data, imageUrl: url });
+            const res = await uploadImage(file);
+            // backend zwraca { url, fullUrl }
+            setData({ ...data, imageUrl: res.url });
             notifications.show({ color: 'green', message: 'Zdjęcie przesłane pomyślnie' });
-        } catch {
+        } catch (err) {
+            console.error(err);
             notifications.show({ color: 'red', message: 'Błąd przesyłania zdjęcia' });
         } finally {
             setUploading(false);
@@ -84,7 +98,9 @@ export default function Profile() {
                     <Grid.Col span={{ base: 12, md: 6 }}>
                         <TextInput label="Nazwa" value={data.name} readOnly />
 
-                        <Title order={5} mt="md" mb="xs">Godziny otwarcia</Title>
+                        <Title order={5} mt="md" mb="xs">
+                            Godziny otwarcia
+                        </Title>
                         <OpeningHoursEditor
                             value={(() => {
                                 try {
@@ -108,8 +124,10 @@ export default function Profile() {
                     </Grid.Col>
 
                     <Grid.Col span={{ base: 12, md: 6 }}>
-                        {/* Upload + podgląd */}
-                        <Title order={5} mb="xs">Obrazek (baner)</Title>
+                        {/* 🖼 Upload + podgląd */}
+                        <Title order={5} mb="xs">
+                            Obrazek (baner)
+                        </Title>
                         <Group align="flex-start" gap="md">
                             <Button
                                 component="label"
@@ -121,7 +139,9 @@ export default function Profile() {
                                     type="file"
                                     accept="image/*"
                                     hidden
-                                    onChange={(e) => handleImageUpload(e.target.files?.[0] ?? null)}
+                                    onChange={(e) =>
+                                        handleImageUpload(e.target.files?.[0] ?? null)
+                                    }
                                 />
                             </Button>
 
@@ -141,7 +161,12 @@ export default function Profile() {
                                     <SafeImage
                                         src={data.imageUrl}
                                         alt="Podgląd"
-                                        style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            borderRadius: 8,
+                                            objectFit: 'cover',
+                                        }}
                                     />
                                 ) : (
                                     <p style={{ color: '#999' }}>Brak zdjęcia</p>
@@ -163,7 +188,9 @@ export default function Profile() {
                                 },
                             }}
                             value={data.description || ''}
-                            onChange={(e) => setData({ ...data, description: e.currentTarget.value })}
+                            onChange={(e) =>
+                                setData({ ...data, description: e.currentTarget.value })
+                            }
                         />
                     </Grid.Col>
                 </Grid>
@@ -231,7 +258,9 @@ export default function Profile() {
                                     <Switch
                                         checked={!!it.isAvailable}
                                         onChange={(e) =>
-                                            changeItem(idx, { isAvailable: e.currentTarget.checked })
+                                            changeItem(idx, {
+                                                isAvailable: e.currentTarget.checked,
+                                            })
                                         }
                                     />
                                 </Table.Td>

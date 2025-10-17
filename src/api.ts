@@ -50,12 +50,13 @@ export const myRestaurants = () =>
     api.get('/restaurants/my').then(r => r.data as { id: number; name: string }[]);
 
 export const uploadImage = async (file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    const res = await api.post('/upload', form, {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data.url as string; // np. /images/logo_restaurants/xxxx.png
+    return res.data.url; // zwraca np. /images/logo_restaurants/123.png
 };
+
 
 

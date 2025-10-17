@@ -1,51 +1,57 @@
 import React from 'react';
-import { FileButton, Button, Group, Text } from '@mantine/core';
-import {uploadImage} from "../api.ts";
-import SafeImage from "./SafeImage.tsx";
+import { Button, Group, Text } from '@mantine/core';
+import { uploadImage } from '../api';
+import SafeImage from './SafeImage';
 
 type Props = {
-    value?: string | null;           // ścieżka z bazy, np. /images/...
-    onChange: (url: string) => void; // zapisujemy WZGLĘDNĄ ścieżkę
+    value?: string | null;
+    onChange: (url: string) => void;
 };
 
 export default function ImageUpload({ value, onChange }: Props) {
-    const [preview, setPreview] = React.useState<string | null>(null);
-    const hasExisting = !!value;
+    const [uploading, setUploading] = React.useState(false);
+    const [preview, setPreview] = React.useState(value || null);
 
     const handleFile = async (file: File | null) => {
         if (!file) return;
-        const url = await uploadImage(file);            // <- POST /api/upload
-        onChange(url);                                  // <- zapisz /images/...
-        setPreview(url);                                // <- żeby od razu było widać
+        try {
+            setUploading(true);
+            const uploaded = await uploadImage(file);
+            onChange(uploaded);
+            setPreview(uploaded);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setUploading(false);
+        }
     };
-
-    const srcForPreview = preview || value || null;
 
     return (
         <Group align="flex-start" gap="md">
-            <div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>Obrazek (baner)</div>
-                <FileButton onChange={handleFile} accept="image/*">
-                    {(props) => <Button {...props}>Wybierz obrazek</Button>}
-                </FileButton>
-            </div>
-
-            <div
-                style={{
-                    width: 220, height: 150, borderRadius: 8, border: '1px solid #ddd',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f5f7',
-                }}
-            >
-                {srcForPreview ? (
-                    <SafeImage
-                        src={srcForPreview}
-                        alt="Podgląd"
-                        style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                    />
-                ) : (
-                    <Text c="dimmed">{hasExisting ? 'Ładowanie...' : 'Brak zdjęcia'}</Text>
-                )}
-            </div>
+            <Button component="label" loading={uploading}>
+                Wybierz obrazek
+                <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleFile(e.target.files?.[0] || null)}
+                />
+            </Button>
+            {preview ? (
+                <SafeImage
+                    src={preview}
+                    alt="Podgląd"
+                    style={{
+                        width: 180,
+                        height: 120,
+                        borderRadius: 8,
+                        objectFit: 'cover',
+                        border: '1px solid #ddd',
+                    }}
+                />
+            ) : (
+                <Text c="dimmed">Brak zdjęcia</Text>
+            )}
         </Group>
     );
 }
