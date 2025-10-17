@@ -9,7 +9,6 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import {OpeningHoursEditor} from "../../../components/OpeningHoursEditor.tsx";
 import ImageUpload from "../../../components/ImageUpload.tsx";
-import {API_URL} from "../../../config.ts";
 
 type MenuItem = {
     name: string;
@@ -96,11 +95,7 @@ export default function Profile() {
 
                     <Grid.Col span={{ base: 12, md: 6 }}>
                         <ImageUpload
-                            value={
-                                data.imageUrl?.startsWith('/images/')
-                                    ? `${API_URL}${data.imageUrl}`
-                                    : data.imageUrl
-                            }
+                            value={data.imageUrl}
                             onChange={(url) => setData({ ...data, imageUrl: url })}
                         />
 
