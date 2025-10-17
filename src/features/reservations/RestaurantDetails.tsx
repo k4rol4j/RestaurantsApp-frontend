@@ -27,6 +27,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 import { Restaurant } from "./hooks/useMakeReservation.ts";
+import dayjs from "dayjs";
 
 // --- typy lokalne dla menu ---
 type MenuItem = {
@@ -125,7 +126,79 @@ export const RestaurantDetails = () => {
                 </Tabs.List>
 
                 <Tabs.Panel value="about" pt="md">
-                    <Text>{restaurant.description ?? "Brak opisu tej restauracji."}</Text>
+                    {/* Opis restauracji */}
+                    <Text>
+                        {restaurant.description ?? "Brak opisu tej restauracji."}
+                    </Text>
+
+                    {/* 🕒 Godziny otwarcia */}
+                    {restaurant.openingHours && (
+                        <div style={{ marginTop: 24 }}>
+                            <Text fw={700} mb="xs" size="lg">
+                                Godziny otwarcia
+                            </Text>
+                            <table
+                                style={{
+                                    width: "100%",
+                                    borderCollapse: "collapse",
+                                    fontSize: 14,
+                                    background: "#fafafa",
+                                    borderRadius: 8,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <tbody>
+                                {Object.entries(JSON.parse(restaurant.openingHours)).map(
+                                    ([day, info]: any) => {
+                                        // Mapa dni tygodnia EN->PL
+                                        const map: Record<string, string> = {
+                                            monday: "Poniedziałek",
+                                            tuesday: "Wtorek",
+                                            wednesday: "Środa",
+                                            thursday: "Czwartek",
+                                            friday: "Piątek",
+                                            saturday: "Sobota",
+                                            sunday: "Niedziela",
+                                        };
+                                        const today = dayjs().format("dddd").toLowerCase();
+                                        const isToday = map[day]?.toLowerCase().includes(today);
+
+                                        return (
+                                            <tr
+                                                key={day}
+                                                style={{
+                                                    background: isToday ? "#e8fbe8" : "transparent",
+                                                }}
+                                            >
+                                                <td
+                                                    style={{
+                                                        padding: "6px 10px",
+                                                        fontWeight: 500,
+                                                        textTransform: "capitalize",
+                                                    }}
+                                                >
+                                                    {map[day] ?? day}
+                                                </td>
+                                                <td style={{ padding: "6px 10px", color: "#555" }}>
+                                                    {info.closed
+                                                        ? "Zamknięte"
+                                                        : `${info.open} – ${info.close}`}
+                                                    {isToday && !info.closed && (
+                                                        <span style={{ color: "#2b8a3e", marginLeft: 8 }}>
+                        (Dziś)
+                      </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* 📍 Mapa */}
                     <div style={{ height: "300px", marginTop: "1rem" }}>
                         <MapContainer
                             center={[restaurant.latitude, restaurant.longitude]}
