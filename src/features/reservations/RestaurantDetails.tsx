@@ -10,6 +10,7 @@ import {
     Button,
     Box,
     Table,
+    Group,
 } from "@mantine/core";
 import { ReservationForm } from "./ReservationForm";
 import { ReviewList } from "./ReviewList";
@@ -63,6 +64,7 @@ export const RestaurantDetails = () => {
     const [loading, setLoading] = useState(true);
     const [reviews, setReviews] = useState<Review[]>([]);
 
+    // 🔄 Pobieranie danych restauracji i opinii
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -90,6 +92,18 @@ export const RestaurantDetails = () => {
     const formatPrice = (n: number) =>
         (Number(n) || 0).toFixed(2).replace(".", ",") + " zł";
 
+    // ⭐ Liczenie średniej ocen z bazy
+    const avgRating =
+        reviews.length > 0
+            ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+            : null;
+
+    // 🔁 Odświeżanie po dodaniu nowej opinii
+    const handleReviewsUpdated = async () => {
+        const rev = await getRestaurantReviews(Number(id));
+        setReviews(rev);
+    };
+
     return (
         <Stack>
             <Box
@@ -114,7 +128,16 @@ export const RestaurantDetails = () => {
             <Text fw={700} size="xl">
                 {restaurant.name}
             </Text>
-            <Badge color="blue">{restaurant.cuisine}</Badge>
+
+            <Group gap="sm" align="center">
+                <Badge color="blue">{restaurant.cuisine}</Badge>
+                {avgRating && (
+                    <Badge color="yellow" variant="filled">
+                        ⭐ {avgRating} / 5 ({reviews.length})
+                    </Badge>
+                )}
+            </Group>
+
             <Text c="dimmed">{restaurant.location}</Text>
 
             <Tabs defaultValue="about">
@@ -125,8 +148,8 @@ export const RestaurantDetails = () => {
                     <Tabs.Tab value="reservation">Rezerwacja</Tabs.Tab>
                 </Tabs.List>
 
+                {/* --- O NAS --- */}
                 <Tabs.Panel value="about" pt="md">
-                    {/* Opis restauracji */}
                     <Text>
                         {restaurant.description ?? "Brak opisu tej restauracji."}
                     </Text>
@@ -150,7 +173,6 @@ export const RestaurantDetails = () => {
                                 <tbody>
                                 {Object.entries(JSON.parse(restaurant.openingHours)).map(
                                     ([day, info]: any) => {
-                                        // Mapa dni tygodnia EN->PL
                                         const map: Record<string, string> = {
                                             monday: "Poniedziałek",
                                             tuesday: "Wtorek",
@@ -185,8 +207,8 @@ export const RestaurantDetails = () => {
                                                         : `${info.open} – ${info.close}`}
                                                     {isToday && !info.closed && (
                                                         <span style={{ color: "#2b8a3e", marginLeft: 8 }}>
-                        (Dziś)
-                      </span>
+                                (Dziś)
+                              </span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -235,11 +257,11 @@ export const RestaurantDetails = () => {
                     </div>
                 </Tabs.Panel>
 
+                {/* --- MENU --- */}
                 <Tabs.Panel value="menu" pt="md">
                     {Array.isArray(restaurant.menu) && restaurant.menu.length > 0 ? (
                         <Stack gap="lg">
                             {(() => {
-                                // grupowanie pozycji po kategorii
                                 const groups = new Map<string, MenuItem[]>();
                                 (restaurant.menu || []).forEach((it) => {
                                     const key = (it.category || "Pozostałe").trim();
@@ -297,15 +319,14 @@ export const RestaurantDetails = () => {
                     )}
                 </Tabs.Panel>
 
+                {/* --- OPINIE --- */}
                 <Tabs.Panel value="reviews" pt="md">
-                    <ReviewList reviews={reviews} />
+                    <ReviewList reviews={reviews} onReviewsUpdated={handleReviewsUpdated} />
                 </Tabs.Panel>
 
+                {/* --- REZERWACJA --- */}
                 <Tabs.Panel value="reservation" pt="md">
-                    <ReservationForm
-                        restaurantId={restaurant.id}
-                        restaurant={restaurant}
-                    />
+                    <ReservationForm restaurantId={restaurant.id} restaurant={restaurant} />
                 </Tabs.Panel>
             </Tabs>
         </Stack>
