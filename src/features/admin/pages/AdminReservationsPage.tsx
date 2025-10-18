@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api';
-import { Table, Group, Button, TextInput, Badge, Stack } from '@mantine/core';
+import { Table, Group, Button, Badge, Stack } from '@mantine/core';
 import {modals} from "@mantine/modals";
+import {DatePickerInput} from "@mantine/dates";
 
 type Row = {
     id: number;
@@ -125,15 +126,19 @@ export function AdminReservationsPage() {
         <>
             <Stack gap="xs" mb="sm">
                 <Group>
-                    <TextInput
-                        placeholder="od (YYYY-MM-DD)"
-                        value={from}
-                        onChange={(e) => setFrom(e.currentTarget.value)}
+                    <DatePickerInput
+                        label="Od"
+                        placeholder="Wybierz datę początkową"
+                        value={from ? new Date(from) : null}
+                        onChange={(val) => setFrom(val ? val.toISOString().slice(0, 10) : '')}
+                        clearable
                     />
-                    <TextInput
-                        placeholder="do (YYYY-MM-DD)"
-                        value={to}
-                        onChange={(e) => setTo(e.currentTarget.value)}
+                    <DatePickerInput
+                        label="Do"
+                        placeholder="Wybierz datę końcową"
+                        value={to ? new Date(to) : null}
+                        onChange={(val) => setTo(val ? val.toISOString().slice(0, 10) : '')}
+                        clearable
                     />
                     <Button onClick={applyFilters} loading={loading}>
                         Filtruj
