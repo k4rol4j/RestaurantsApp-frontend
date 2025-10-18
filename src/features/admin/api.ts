@@ -11,7 +11,7 @@ export const adminApi = {
         api.put(`/admin/users/${id}/roles`, { roles }).then(r => r.data),
 
     // RESTAURANTS
-    getRestaurants: (q = '', skip = 0, take = 20) =>
+    getRestaurants: (q = '', skip = 0, take = 100) =>
         api.get(`/admin/restaurants`, { params: { q, skip, take } }).then(r => r.data),
     deleteRestaurant: (id: number) =>
         api.delete(`/admin/restaurants/${id}`).then(r => r.data),
