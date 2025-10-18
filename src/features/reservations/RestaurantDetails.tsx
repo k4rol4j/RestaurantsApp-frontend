@@ -97,13 +97,6 @@ export const RestaurantDetails = () => {
         reviews.length > 0
             ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
             : null;
-
-    // 🔁 Odświeżanie po dodaniu nowej opinii
-    const handleReviewsUpdated = async () => {
-        const rev = await getRestaurantReviews(Number(id));
-        setReviews(rev);
-    };
-
     return (
         <Stack>
             <Box
@@ -321,7 +314,7 @@ export const RestaurantDetails = () => {
 
                 {/* --- OPINIE --- */}
                 <Tabs.Panel value="reviews" pt="md">
-                    <ReviewList reviews={reviews} onReviewsUpdated={handleReviewsUpdated} />
+                    <ReviewList reviews={reviews} />
                 </Tabs.Panel>
 
                 {/* --- REZERWACJA --- */}

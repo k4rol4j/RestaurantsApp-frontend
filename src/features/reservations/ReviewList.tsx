@@ -6,12 +6,12 @@ type Review = {
     date: string;
 };
 
+// 🧩 Bez nieużywanego propsa – czysto i bez ostrzeżeń
 type Props = {
     reviews: Review[];
-    onReviewsUpdated?: () => Promise<void>;
 };
 
-export const ReviewList = ({ reviews, onReviewsUpdated }: Props) => {
+export const ReviewList = ({ reviews }: Props) => {
     return (
         <>
             {reviews.length === 0 ? (
