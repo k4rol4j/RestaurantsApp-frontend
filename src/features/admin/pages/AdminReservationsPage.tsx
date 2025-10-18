@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api';
 import { Table, Group, Button, TextInput, Badge, Stack } from '@mantine/core';
+import {modals} from "@mantine/modals";
 
 type Row = {
     id: number;
@@ -20,12 +21,20 @@ export function AdminReservationsPage() {
     const [total, setTotal] = useState(0);
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
+    const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(false);
+
+    const take = 20; // ile rekordów na stronę
 
     const load = async () => {
         setLoading(true);
         try {
-            const data = await adminApi.getReservations({ from, to });
+            const data = await adminApi.getReservations({
+                from,
+                to,
+                skip: page * take,
+                take,
+            });
             setItems(data.items);
             setTotal(data.total);
         } finally {
@@ -36,19 +45,51 @@ export function AdminReservationsPage() {
     useEffect(() => {
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [page]);
 
-    const cancelRes = async (id: number) => {
-        if (!confirm('Anulować rezerwację (soft — status CANCELLED)?')) return;
-        await adminApi.cancelReservation(id);
+    const applyFilters = async () => {
+        setPage(0);
         await load();
     };
 
-    const hardDelete = async (id: number) => {
-        if (!confirm('USUNĄĆ rezerwację na stałe? Tej operacji nie można cofnąć.')) return;
-        await adminApi.deleteReservation(id);
-        await load();
+    const cancelRes = (id: number) => {
+        modals.openConfirmModal({
+            title: 'Anulować rezerwację?',
+            centered: true,
+            labels: { confirm: 'Tak, anuluj', cancel: 'Anuluj' },
+            confirmProps: { color: 'yellow' },
+            children: (
+                <p>
+                    Czy na pewno chcesz oznaczyć tę rezerwację jako <b>ANULOWANĄ</b>?<br />
+                    Użytkownik nie będzie mógł już z niej skorzystać.
+                </p>
+            ),
+            onConfirm: async () => {
+                await adminApi.cancelReservation(id);
+                await load();
+            },
+        });
     };
+
+    const hardDelete = (id: number) => {
+        modals.openConfirmModal({
+            title: 'Usunąć rezerwację na stałe?',
+            centered: true,
+            labels: { confirm: 'Usuń', cancel: 'Anuluj' },
+            confirmProps: { color: 'red' },
+            children: (
+                <p>
+                    Czy na pewno chcesz <b>usunąć rezerwację</b>? <br />
+                    Tej operacji nie można cofnąć.
+                </p>
+            ),
+            onConfirm: async () => {
+                await adminApi.deleteReservation(id);
+                await load();
+            },
+        });
+    };
+
 
     const prettyTables = (r: Row) =>
         r.tables.map((t) => t.table.name ?? `T${t.table.id}`).join(', ');
@@ -76,11 +117,14 @@ export function AdminReservationsPage() {
                         value={to}
                         onChange={(e) => setTo(e.currentTarget.value)}
                     />
-                    <Button onClick={load} loading={loading}>
+                    <Button onClick={applyFilters} loading={loading}>
                         Filtruj
                     </Button>
                 </Group>
-                <div>Łącznie: {total}</div>
+
+                <div>
+                    Widoczne: {items.length} / Łącznie: {total}
+                </div>
             </Stack>
 
             <Table striped highlightOnHover withTableBorder>
@@ -96,6 +140,7 @@ export function AdminReservationsPage() {
                         <Table.Th style={{ width: 220 }}></Table.Th>
                     </Table.Tr>
                 </Table.Thead>
+
                 <Table.Tbody>
                     {items.map((r) => (
                         <Table.Tr key={r.id}>
@@ -141,6 +186,21 @@ export function AdminReservationsPage() {
                     )}
                 </Table.Tbody>
             </Table>
+
+            <Group mt="md" justify="center">
+                <Button
+                    disabled={page === 0 || loading}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                    ← Poprzednia
+                </Button>
+                <Button
+                    disabled={(page + 1) * take >= total || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                >
+                    Następna →
+                </Button>
+            </Group>
         </>
     );
 }
