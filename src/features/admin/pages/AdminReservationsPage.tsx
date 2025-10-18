@@ -90,6 +90,24 @@ export function AdminReservationsPage() {
         });
     };
 
+    const restoreRes = (id: number) => {
+        modals.openConfirmModal({
+            title: 'Przywrócić rezerwację?',
+            centered: true,
+            labels: { confirm: 'Tak, przywróć', cancel: 'Anuluj' },
+            confirmProps: { color: 'green' },
+            children: (
+                <p>
+                    Czy chcesz przywrócić tę rezerwację?<br />
+                    Zostanie ponownie oznaczona jako <b>CONFIRMED</b>.
+                </p>
+            ),
+            onConfirm: async () => {
+                await adminApi.restoreReservation(id);
+                await load();
+            },
+        });
+    };
 
     const prettyTables = (r: Row) =>
         r.tables.map((t) => t.table.name ?? `T${t.table.id}`).join(', ');
@@ -155,7 +173,16 @@ export function AdminReservationsPage() {
                             <Table.Td>{prettyTables(r)}</Table.Td>
                             <Table.Td>
                                 <Group gap="xs" justify="flex-start">
-                                    {r.status !== 'CANCELLED' && (
+                                    {r.status === 'CANCELLED' ? (
+                                        <Button
+                                            size="xs"
+                                            variant="light"
+                                            color="green"
+                                            onClick={() => restoreRes(r.id)}
+                                        >
+                                            Przywróć
+                                        </Button>
+                                    ) : (
                                         <Button
                                             size="xs"
                                             variant="light"

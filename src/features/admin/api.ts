@@ -42,4 +42,6 @@ export const adminApi = {
     deleteReservation: (id: number) =>
         api.delete(`/admin/reservations/${id}`).then(r => r.data),
 
+    restoreReservation: (id: number) =>
+        api.patch(`/admin/reservations/${id}/restore`, {}).then(r => r.data),
 };
