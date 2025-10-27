@@ -57,9 +57,9 @@ export default function Profile() {
         if (!file) return;
         try {
             setUploading(true);
-            const res = await uploadImage(file);
-            // backend zwraca { url, fullUrl }
+            const res = await uploadImage(file); 
             setData({ ...data, imageUrl: res });
+
             notifications.show({ color: 'green', message: 'Zdjęcie przesłane pomyślnie' });
         } catch (err) {
             console.error(err);
