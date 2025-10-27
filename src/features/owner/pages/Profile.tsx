@@ -18,7 +18,7 @@ import {
     TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import {IconPlus, IconTrash, IconX} from '@tabler/icons-react';
 import { OpeningHoursEditor } from '../../../components/OpeningHoursEditor';
 import SafeImage from '../../../components/SafeImage';
 
@@ -59,7 +59,7 @@ export default function Profile() {
             setUploading(true);
             const res = await uploadImage(file);
             // backend zwraca { url, fullUrl }
-            setData({ ...data, imageUrl: res.url });
+            setData({ ...data, imageUrl: res });
             notifications.show({ color: 'green', message: 'Zdjęcie przesłane pomyślnie' });
         } catch (err) {
             console.error(err);
@@ -143,6 +143,16 @@ export default function Profile() {
                                         handleImageUpload(e.target.files?.[0] ?? null)
                                     }
                                 />
+                            </Button>
+
+                            <Button
+                                variant="light"
+                                color="red"
+                                leftSection={<IconX size={14} />}
+                                onClick={() => setData({ ...data, imageUrl: null })}
+                                disabled={!data.imageUrl} 
+                            >
+                                Usuń zdjęcie
                             </Button>
 
                             <div
