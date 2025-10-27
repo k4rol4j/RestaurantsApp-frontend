@@ -150,7 +150,7 @@ export default function Profile() {
                                 color="red"
                                 leftSection={<IconX size={14} />}
                                 onClick={() => setData({ ...data, imageUrl: null })}
-                                disabled={!data.imageUrl} 
+                                disabled={!data.imageUrl}
                             >
                                 Usuń zdjęcie
                             </Button>

@@ -195,13 +195,13 @@ export const RestaurantDetails = () => {
                                                     {map[day] ?? day}
                                                 </td>
                                                 <td style={{ padding: "6px 10px", color: "#555" }}>
-                                                    {info.closed
+                                                    {!info
                                                         ? "Zamknięte"
                                                         : `${info.open} – ${info.close}`}
-                                                    {isToday && !info.closed && (
+                                                    {isToday && info && (
                                                         <span style={{ color: "#2b8a3e", marginLeft: 8 }}>
-                                (Dziś)
-                              </span>
+                                                            (Dziś)
+                                                        </span>
                                                     )}
                                                 </td>
                                             </tr>
