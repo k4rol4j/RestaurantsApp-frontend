@@ -4,7 +4,7 @@ import {makeReservation} from "../api/reservations.ts";
 export type Restaurant = {
     id: number;
     name: string;
-    rating: number;
+    rating: number | null;
     imageUrl: string | null;
     description: string | null;
     capacity?: number;
@@ -27,13 +27,13 @@ export type Restaurant = {
             name: string;
         };
     }[];
+
+    avgRating?: number | null;
+    distance?: number;
 };
 
-
-// Typ dla listy restauracji
 export type RestaurantsType = Restaurant[];
 
-// Typ dla danych rezerwacji
 export type MakeReservationValues = {
     name: string;
     guests: number;

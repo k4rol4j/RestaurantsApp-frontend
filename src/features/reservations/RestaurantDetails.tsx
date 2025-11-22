@@ -40,7 +40,8 @@ type MenuItem = {
 };
 
 // rozszerzamy typ restauracji o menu
-type RestaurantWithMenu = Restaurant & { menu?: MenuItem[] };
+type RestaurantWithMenu = Restaurant & { menu?: MenuItem[]; avgRating?: number | null;
+};
 
 const customMarker = new L.Icon({
     iconUrl: markerIcon,
