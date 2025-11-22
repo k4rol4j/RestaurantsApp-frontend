@@ -24,12 +24,9 @@ import "leaflet/dist/leaflet.css";
 import { RestaurantCard } from "./RestaurantCard";
 
 const markerIcon = new L.Icon({
-    iconUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -43,7 +40,9 @@ function FlyToMarkers({ restaurants, radius }: { restaurants: Restaurant[]; radi
     useEffect(() => {
         const valid = restaurants.filter((r) => r.address?.latitude && r.address?.longitude);
         if (valid.length > 0) {
-            const bounds = L.latLngBounds(valid.map((r) => [r.address!.latitude, r.address!.longitude] as [number, number]));
+            const bounds = L.latLngBounds(
+                valid.map((r) => [r.address!.latitude, r.address!.longitude] as [number, number])
+            );
             map.flyToBounds(bounds, { padding: [radius * 2, radius * 2] as any });
         } else {
             map.setView([52.069167, 19.480556], 6);
@@ -62,8 +61,8 @@ interface FilterParams {
     longitude?: number;
     radius?: number;
     sortByDistance?: boolean;
-    date?: string;   // "YYYY-MM-DD"
-    time?: string;   // "HH:mm"
+    date?: string;
+    time?: string;
     partySize?: number;
 }
 
@@ -85,11 +84,14 @@ export const RestaurantsList: React.FC = () => {
     // lokalizacja
     const [cities, setCities] = useState<City[]>([]);
     const [selectedCity, setSelectedCity] = useState<City | null>(null);
+    const [districts, setDistricts] = useState<string[]>([]); // ⭐ NOWE
+    const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null); // ⭐ NOWE
+
     const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [radius, setRadius] = useState<number>(0);
     const [locationFilters, setLocationFilters] = useState<FilterParams | null>(null);
 
-    // dostępność (używane w sekcji "Filtruj", nie w "Szukaj")
+    // dostępność
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedTime, setSelectedTime] = useState<string>("19:00");
     const [people, setPeople] = useState<number>(2);
@@ -102,7 +104,7 @@ export const RestaurantsList: React.FC = () => {
         fetchCities();
     }, []);
 
-    // miasta
+    // pobieranie miast
     const fetchCities = async () => {
         try {
             const res = await fetch(`${API_URL}/restaurants/cities`);
@@ -113,7 +115,7 @@ export const RestaurantsList: React.FC = () => {
         }
     };
 
-    // gdy wybierzemy miasto – ustaw pozycję mapy
+    // mapa
     useEffect(() => {
         if (selectedCity) {
             setMapLocation({ lat: selectedCity.latitude, lng: selectedCity.longitude });
@@ -122,11 +124,31 @@ export const RestaurantsList: React.FC = () => {
         }
     }, [selectedCity]);
 
-    // synchronizuj locationFilters, gdy zmienia się miasto lub promień
+    // ⭐ POBIERANIE DZIELNIC
+    useEffect(() => {
+        const loadDistricts = async () => {
+            if (!selectedCity) {
+                setDistricts([]);
+                setSelectedDistrict(null);
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}/restaurants/districts/${selectedCity.label}`);
+                const data = await res.json();
+                setDistricts(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error("Błąd pobierania dzielnic:", err);
+                setDistricts([]);
+            }
+        };
+        loadDistricts();
+    }, [selectedCity]);
+
+    // synchronizacja filtrów lokalizacji
     useEffect(() => {
         if (selectedCity) {
             setLocationFilters({
-                location: selectedCity.label,
+                location: selectedDistrict || selectedCity.label, // ⭐ UWZGLĘDNIAMY DZIELNICĘ
                 latitude: selectedCity.latitude,
                 longitude: selectedCity.longitude,
                 radius: radius || 0,
@@ -134,9 +156,9 @@ export const RestaurantsList: React.FC = () => {
         } else {
             setLocationFilters(null);
         }
-    }, [selectedCity, radius]);
+    }, [selectedCity, selectedDistrict, radius]);
 
-    // lista startowa (wszyscy) – publiczny endpoint /restaurants/search
+    // lista startowa
     const fetchRestaurants = async () => {
         setLoading(true);
         try {
@@ -164,12 +186,11 @@ export const RestaurantsList: React.FC = () => {
             const data = await response.json();
             setCuisines(Array.isArray(data) ? data : []);
         } catch (error) {
-            console.error("Błąd pobierania kuchni:", error);
             setCuisines([]);
         }
     };
 
-    // SZUKAJ — po nazwie + ewentualnie lokalizacja (miasto lub geofilter)
+    // SZUKAJ
     const handleSearch = async () => {
         setLoading(true);
         try {
@@ -183,12 +204,11 @@ export const RestaurantsList: React.FC = () => {
                     params.longitude = selectedCity.longitude;
                     params.radius = radius;
                 } else {
-                    params.location = selectedCity.label;
+                    params.location = selectedDistrict || selectedCity.label; // ⭐ DZIELNICA → CITY
                 }
 
-                // 🔥 TU WAŻNE — zapamiętujemy lokalizację do filtrów
                 setLocationFilters({
-                    location: selectedCity.label,
+                    location: selectedDistrict || selectedCity.label,
                     latitude: selectedCity.latitude,
                     longitude: selectedCity.longitude,
                     radius: radius || 0,
@@ -208,20 +228,21 @@ export const RestaurantsList: React.FC = () => {
     const toYMD = (d: Date) =>
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    // FILTRUJ — kuchnie / ocena / sort / dystans / dostępność → POST /restaurants/filter
+    // FILTRUJ
     const handleFilter = async () => {
         setLoading(true);
         try {
             const filters: FilterParams = locationFilters ? { ...locationFilters } : {};
-            if (!locationFilters && selectedCity) {
-                filters.location = selectedCity.label;
+
+            if (selectedCity) {
+                filters.location = selectedDistrict || selectedCity.label; // ⭐ DZIELNICA
             }
+
             if (cuisineFilter?.length) filters.cuisine = cuisineFilter;
             if (minRating !== null) filters.minRating = minRating;
             if (sortOrder) filters.sortOrder = sortOrder;
             if (sortByDistance) filters.sortByDistance = true;
 
-            // dostępność (opcjonalna)
             if (selectedDate) filters.date = toYMD(selectedDate);
             if (selectedTime) filters.time = selectedTime.slice(0, 5);
             if (people && people > 0) filters.partySize = people;
@@ -278,8 +299,20 @@ export const RestaurantsList: React.FC = () => {
                     onChange={(val) => {
                         const city = cities.find((c) => c.value === val) || null;
                         setSelectedCity(city);
+                        setSelectedDistrict(null); // ⭐ reset dzielnicy
                     }}
                     searchable
+                    clearable
+                />
+
+                {/* ⭐ SELECT DZIELNICY */}
+                <Select
+                    label="Dzielnica"
+                    placeholder={selectedCity ? "Wybierz dzielnicę" : "Najpierw wybierz miasto"}
+                    data={districts.map((d) => ({ label: d, value: d }))}
+                    value={selectedDistrict}
+                    onChange={setSelectedDistrict}
+                    disabled={!selectedCity || districts.length === 0}
                     clearable
                 />
 
@@ -292,7 +325,7 @@ export const RestaurantsList: React.FC = () => {
                     disabled={!selectedCity}
                 />
 
-                {/* Dostępność (do FILTRUJ, nie do SZUKAJ) */}
+                {/* DOSTĘPNOŚĆ */}
                 <Group grow>
                     <DateInput
                         label="Data dostępności"
@@ -320,11 +353,11 @@ export const RestaurantsList: React.FC = () => {
                     <Button
                         variant="default"
                         onClick={() => {
-                            // pełny reset stanów
                             setNameFilter("");
                             setCuisineFilter([]);
                             setMinRating(null);
                             setSelectedCity(null);
+                            setSelectedDistrict(null);
                             setSortOrder(null);
                             setRadius(0);
                             setSelectedDate(null);
@@ -397,10 +430,10 @@ export const RestaurantsList: React.FC = () => {
                     <FlyToMarkers restaurants={restaurants} radius={radius} />
                     {restaurants.map((r) =>
                         r.address?.latitude && r.address?.longitude ? (
-                            <Marker key={r.id} position={[r.address?.latitude, r.address?.longitude]} icon={markerIcon}>
+                            <Marker key={r.id} position={[r.address.latitude, r.address.longitude]} icon={markerIcon}>
                                 <Popup>
                                     <Text fw={700}>{r.name}</Text>
-                                    <Text size="sm"> {r.cuisines?.map(c => c.cuisine.name).join(", ")}</Text>
+                                    <Text size="sm">{r.cuisines?.map((c) => c.cuisine.name).join(", ")}</Text>
                                     <Group mt={4}>
                                         <Button
                                             variant="light"
@@ -410,7 +443,7 @@ export const RestaurantsList: React.FC = () => {
                                             Szczegóły
                                         </Button>
                                         <a
-                                            href={`https://www.google.com/maps/dir/?api=1&destination=${r.address?.latitude},${r.address?.longitude}`}
+                                            href={`https://www.google.com/maps/dir/?api=1&destination=${r.address.latitude},${r.address.longitude}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >
@@ -435,7 +468,6 @@ export const RestaurantsList: React.FC = () => {
 
                             if (sortOrder === "asc") return ar - br;
                             if (sortOrder === "desc") return br - ar;
-
                             return 0;
                         })
                         .map((restaurant) => (
@@ -448,6 +480,7 @@ export const RestaurantsList: React.FC = () => {
                         ))}
                 </SimpleGrid>
             )}
+
             {loading && <Loader size="lg" />}
         </div>
     );
