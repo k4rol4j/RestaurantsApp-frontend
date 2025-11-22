@@ -414,8 +414,12 @@ export const RestaurantsList: React.FC = () => {
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
                     {[...restaurants]
                         .sort((a, b) => {
-                            if (sortOrder === "asc") return a.rating - b.rating;
-                            if (sortOrder === "desc") return b.rating - a.rating;
+                            const ar = a.avgRating ?? 0;
+                            const br = b.avgRating ?? 0;
+
+                            if (sortOrder === "asc") return ar - br;
+                            if (sortOrder === "desc") return br - ar;
+
                             return 0;
                         })
                         .map((restaurant) => (
