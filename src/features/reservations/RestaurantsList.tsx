@@ -226,6 +226,12 @@ export const RestaurantsList: React.FC = () => {
             if (selectedTime) filters.time = selectedTime.slice(0, 5);
             if (people && people > 0) filters.partySize = people;
 
+            if (filters.radius === 0) {
+                delete filters.latitude;
+                delete filters.longitude;
+                delete filters.radius;
+            }
+
             const response = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
