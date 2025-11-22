@@ -81,18 +81,22 @@ export const RestaurantSearchByLocation = () => {
 
                 {/* 🔥 MARKERY RESTAURACJI */}
                 {results.map((r) =>
-                    r.address ? (
+                    r.address?.latitude && r.address?.longitude ? (
                         <Marker
                             key={r.id}
-                            position={[
-                                r.address.latitude,
-                                r.address.longitude,
-                            ]}
+                            position={[r.address.latitude, r.address.longitude]}
                         >
-                            <Popup>{r.name}</Popup>
+                            <Popup>
+                                <strong>{r.name}</strong>
+                                <br />
+                                {r.address.city}
+                                <br />
+                                {r.cuisines?.map((c) => c.cuisine.name).join(", ")}
+                            </Popup>
                         </Marker>
                     ) : null
                 )}
+
             </MapContainer>
 
             <Text mt="md">Zasięg wyszukiwania: {radius} km</Text>

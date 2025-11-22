@@ -41,9 +41,9 @@ type City = { label: string; value: string; latitude: number; longitude: number 
 function FlyToMarkers({ restaurants, radius }: { restaurants: Restaurant[]; radius: number }) {
     const map = useMap();
     useEffect(() => {
-        const valid = restaurants.filter((r) => r.latitude && r.longitude);
+        const valid = restaurants.filter((r) => r.address?.latitude && r.address?.longitude);
         if (valid.length > 0) {
-            const bounds = L.latLngBounds(valid.map((r) => [r.latitude!, r.longitude!] as [number, number]));
+            const bounds = L.latLngBounds(valid.map((r) => [r.address!.latitude, r.address!.longitude] as [number, number]));
             map.flyToBounds(bounds, { padding: [radius * 2, radius * 2] as any });
         } else {
             map.setView([52.069167, 19.480556], 6);
@@ -380,11 +380,11 @@ export const RestaurantsList: React.FC = () => {
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <FlyToMarkers restaurants={restaurants} radius={radius} />
                     {restaurants.map((r) =>
-                        r.latitude && r.longitude ? (
-                            <Marker key={r.id} position={[r.latitude, r.longitude]} icon={markerIcon}>
+                        r.address?.latitude && r.address?.longitude ? (
+                            <Marker key={r.id} position={[r.address?.latitude, r.address?.longitude]} icon={markerIcon}>
                                 <Popup>
                                     <Text fw={700}>{r.name}</Text>
-                                    <Text size="sm">{r.cuisine}</Text>
+                                    <Text size="sm"> {r.cuisines?.map(c => c.cuisine.name).join(", ")}</Text>
                                     <Group mt={4}>
                                         <Button
                                             variant="light"
@@ -394,7 +394,7 @@ export const RestaurantsList: React.FC = () => {
                                             Szczegóły
                                         </Button>
                                         <a
-                                            href={`https://www.google.com/maps/dir/?api=1&destination=${r.latitude},${r.longitude}`}
+                                            href={`https://www.google.com/maps/dir/?api=1&destination=${r.address?.latitude},${r.address?.longitude}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >

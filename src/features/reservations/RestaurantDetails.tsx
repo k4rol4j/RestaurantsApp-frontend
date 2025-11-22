@@ -72,8 +72,7 @@ export const RestaurantDetails = () => {
                 const rev = await getRestaurantReviews(Number(id));
                 setRestaurant({
                     ...res,
-                    latitude: res.latitude ?? 50.0647,
-                    longitude: res.longitude ?? 19.945,
+                    address: res.address,
                 });
                 setReviews(rev);
             } catch (e) {
@@ -123,7 +122,7 @@ export const RestaurantDetails = () => {
             </Text>
 
             <Group gap="sm" align="center">
-                <Badge color="blue">{restaurant.cuisine}</Badge>
+                <Badge color="blue">{restaurant.cuisines?.map((c) => c.cuisine.name).join(", ")}</Badge>
                 {avgRating && (
                     <Badge color="yellow" variant="filled">
                         ⭐ {avgRating} / 5 ({reviews.length})
@@ -131,7 +130,7 @@ export const RestaurantDetails = () => {
                 )}
             </Group>
 
-            <Text c="dimmed">{restaurant.location}</Text>
+            <Text c="dimmed">{restaurant.address?.city}</Text>
 
             <Tabs defaultValue="about">
                 <Tabs.List>
@@ -216,7 +215,7 @@ export const RestaurantDetails = () => {
                     {/* 📍 Mapa */}
                     <div style={{ height: "300px", marginTop: "1rem" }}>
                         <MapContainer
-                            center={[restaurant.latitude, restaurant.longitude]}
+                            center={[restaurant.address?.latitude!, restaurant.address?.longitude!]}
                             zoom={15}
                             scrollWheelZoom={false}
                             style={{ height: "100%", width: "100%", borderRadius: "10px" }}
@@ -226,16 +225,17 @@ export const RestaurantDetails = () => {
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
                             <Marker
-                                position={[restaurant.latitude, restaurant.longitude]}
+                                position={[restaurant.address?.latitude!, restaurant.address?.longitude!]}
                                 icon={customMarker}
                             >
                                 <Popup>
                                     <Text fw={700}>{restaurant.name}</Text>
                                     <Text size="sm" c="dimmed">
-                                        {restaurant.location}
+                                        {restaurant.address?.city}
                                     </Text>
+
                                     <a
-                                        href={`https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`}
+                                        href={`https://www.google.com/maps/dir/?api=1&destination=${restaurant.address?.latitude},${restaurant.address?.longitude}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ textDecoration: "none" }}

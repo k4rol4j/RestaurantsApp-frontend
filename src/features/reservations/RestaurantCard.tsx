@@ -92,11 +92,11 @@ export const RestaurantCard = ({ restaurant, isFavorite, onToggleFavorite }: Pro
             </Group>
 
             <Badge color="blue" variant="light">
-                {restaurant.cuisine}
+                {restaurant.cuisines?.map(c => c.cuisine.name).join(", ")}
             </Badge>
 
             <Text size="sm" c="dimmed">
-                {restaurant.location}
+                {restaurant.address?.city ?? "Brak adresu"}
             </Text>
 
             {/* ⭐ Ocena – jeśli średnia istnieje */}
