@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card, Text, Group, Badge, Button, ActionIcon, Box } from "@mantine/core";
 import { IconHeart, IconHeartFilled } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
@@ -5,6 +6,7 @@ import { Carousel } from "@mantine/carousel";
 import "@mantine/carousel/styles.css";
 import SafeImage from "../../components/SafeImage";
 import { Restaurant } from "./hooks/useMakeReservation";
+import { getRestaurantReviews } from "./api/restaurants"; // ⬅️ importujemy, żeby pobrać opinie
 
 interface Props {
     restaurant: Restaurant;
@@ -18,7 +20,27 @@ export const RestaurantCard = ({ restaurant, isFavorite, onToggleFavorite }: Pro
             ? restaurant.imageGallery.split(",").map((url) => url.trim()).filter(Boolean)
             : [];
 
-    const avgRating = restaurant.avgRating ?? null;
+    // 🟡 Dodajemy stan na średnią ocen
+    const [avgRating, setAvgRating] = useState<number | null>(null);
+
+    // 🔄 Pobieramy opinie i liczymy średnią
+    useEffect(() => {
+        (async () => {
+            try {
+                const reviews = await getRestaurantReviews(restaurant.id);
+                if (reviews.length > 0) {
+                    const avg =
+                        reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) /
+                        reviews.length;
+                    setAvgRating(Number(avg.toFixed(1)));
+                } else {
+                    setAvgRating(null);
+                }
+            } catch (err) {
+                console.warn("Nie udało się pobrać opinii:", err);
+            }
+        })();
+    }, [restaurant.id]);
 
     return (
         <Card shadow="sm" p="lg" radius="md" withBorder>
@@ -70,17 +92,17 @@ export const RestaurantCard = ({ restaurant, isFavorite, onToggleFavorite }: Pro
             </Group>
 
             <Badge color="blue" variant="light">
-                {restaurant.cuisines?.map((c) => c.cuisine.name).join(", ") || "Brak kuchni"}
+                {restaurant.cuisines?.map(c => c.cuisine.name).join(", ")}
             </Badge>
 
             <Text size="sm" c="dimmed">
                 {restaurant.address?.city ?? "Brak adresu"}
             </Text>
 
-            {/* ⭐ Ocena – backendowa średnia */}
-            {avgRating !== null ? (
+            {/* ⭐ Ocena – jeśli średnia istnieje */}
+            {avgRating ? (
                 <Text size="sm" mt="xs">
-                    Ocena: {avgRating.toFixed(1)} ⭐
+                    Ocena: {avgRating} ⭐
                 </Text>
             ) : (
                 <Text size="sm" mt="xs" c="dimmed">
