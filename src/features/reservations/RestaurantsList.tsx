@@ -183,11 +183,18 @@ export const RestaurantsList: React.FC = () => {
                     params.longitude = selectedCity.longitude;
                     params.radius = radius;
                 } else {
-                    params.location = selectedCity.label; // samo miasto
+                    params.location = selectedCity.label;
                 }
+
+                // 🔥 TU WAŻNE — zapamiętujemy lokalizację do filtrów
+                setLocationFilters({
+                    location: selectedCity.label,
+                    latitude: selectedCity.latitude,
+                    longitude: selectedCity.longitude,
+                    radius: radius || 0,
+                });
             }
 
-            // console.log('[SEARCH params]', params);
             const data = await searchRestaurants(params);
             setRestaurants(data);
         } catch (e) {
@@ -206,6 +213,9 @@ export const RestaurantsList: React.FC = () => {
         setLoading(true);
         try {
             const filters: FilterParams = locationFilters ? { ...locationFilters } : {};
+            if (!locationFilters && selectedCity) {
+                filters.location = selectedCity.label;
+            }
             if (cuisineFilter?.length) filters.cuisine = cuisineFilter;
             if (minRating !== null) filters.minRating = minRating;
             if (sortOrder) filters.sortOrder = sortOrder;
