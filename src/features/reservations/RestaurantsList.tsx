@@ -87,7 +87,7 @@ export const RestaurantsList: React.FC = () => {
 
     const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [radius, setRadius] = useState<number>(0);
-    const [locationFilters, setLocationFilters] = useState<FilterParams | null>(null);
+    const [, setLocationFilters] = useState<FilterParams | null>(null);
 
     // dostępność
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -155,17 +155,19 @@ export const RestaurantsList: React.FC = () => {
 
     // lokalizacja przechowywana globalnie
     useEffect(() => {
-        if (selectedCity) {
-            const loc = getLocationString();
-            setLocationFilters({
-                location: loc,
-                latitude: selectedCity.latitude,
-                longitude: selectedCity.longitude,
-                radius: radius,
-            });
-        } else {
+        if (!selectedCity) {
             setLocationFilters(null);
+            return;
         }
+
+        const loc = getLocationString();
+
+        setLocationFilters({
+            location: loc,
+            latitude: selectedCity?.latitude ?? 0,
+            longitude: selectedCity?.longitude ?? 0,
+            radius: radius || 0,
+        });
     }, [selectedCity, selectedDistricts, radius]);
 
     // lista początkowa
@@ -211,17 +213,28 @@ export const RestaurantsList: React.FC = () => {
         try {
             const params: FilterParams = {};
 
-            if (nameFilter.trim()) params.name = nameFilter.trim();
-
-            if (locationFilters?.location) {
-                params.location = locationFilters.location;
+            // nazwa restauracji
+            if (nameFilter.trim()) {
+                params.name = nameFilter.trim();
             }
 
+            // lokalizacja (miasto + dzielnice)
+            const loc = getLocationString();
+            if (loc) {
+                params.location = loc;
+            }
+
+            // promień → geolokalizacja
             if (radius > 0 && selectedCity) {
                 params.latitude = selectedCity.latitude;
                 params.longitude = selectedCity.longitude;
                 params.radius = radius;
             }
+
+            // dostępność (🔥 dodane z powrotem)
+            if (selectedDate) params.date = toYMD(selectedDate);
+            if (selectedTime) params.time = selectedTime;
+            if (people > 0) params.partySize = people;
 
             const res = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
