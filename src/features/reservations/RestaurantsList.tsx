@@ -11,11 +11,9 @@ import {
     MultiSelect,
     Checkbox,
 } from "@mantine/core";
-import { DateInput, TimeInput } from "@mantine/dates";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { Restaurant } from "./hooks/useMakeReservation";
-import { searchRestaurants } from "./api/restaurants";
 import { getFavorites, toggleFavorite } from "./api/favorites";
 import { API_URL } from "../../config";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -96,22 +94,24 @@ export const RestaurantsList: React.FC = () => {
     const [selectedTime, setSelectedTime] = useState<string>("19:00");
     const [people, setPeople] = useState<number>(2);
 
-    // helper: wspólna reprezentacja lokalizacji
+    // helper: lokalizacja jako string
     const getLocationString = (): string | undefined => {
         if (!selectedCity) return undefined;
-        if (!selectedDistricts || selectedDistricts.length === 0) {
-            return selectedCity.label; // samo miasto
-        }
-        return `${selectedCity.label},${selectedDistricts.join(",")}`; // Miasto,D1,D2,...
+        if (!selectedDistricts.length) return selectedCity.label;
+        return `${selectedCity.label},${selectedDistricts.join(",")}`;
     };
 
     // pierwsze ładowanie
     useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    const fetchInitialData = () => {
         fetchRestaurants();
         fetchCuisines();
         fetchFavorites();
         fetchCities();
-    }, []);
+    };
 
     // pobieranie miast
     const fetchCities = async () => {
@@ -124,7 +124,7 @@ export const RestaurantsList: React.FC = () => {
         }
     };
 
-    // mapa
+    // ustawienie mapy po mieście
     useEffect(() => {
         if (selectedCity) {
             setMapLocation({ lat: selectedCity.latitude, lng: selectedCity.longitude });
@@ -133,7 +133,7 @@ export const RestaurantsList: React.FC = () => {
         }
     }, [selectedCity]);
 
-    // pobieranie dzielnic dla miasta
+    // pobieranie dzielnic
     useEffect(() => {
         const loadDistricts = async () => {
             if (!selectedCity) {
@@ -153,7 +153,7 @@ export const RestaurantsList: React.FC = () => {
         loadDistricts();
     }, [selectedCity]);
 
-    // synchronizacja filtrów lokalizacji
+    // lokalizacja przechowywana globalnie
     useEffect(() => {
         if (selectedCity) {
             const loc = getLocationString();
@@ -161,18 +161,23 @@ export const RestaurantsList: React.FC = () => {
                 location: loc,
                 latitude: selectedCity.latitude,
                 longitude: selectedCity.longitude,
-                radius: radius || 0,
+                radius: radius,
             });
         } else {
             setLocationFilters(null);
         }
     }, [selectedCity, selectedDistricts, radius]);
 
-    // lista startowa
+    // lista początkowa
     const fetchRestaurants = async () => {
         setLoading(true);
         try {
-            const data = await searchRestaurants({});
+            const res = await fetch(`${API_URL}/restaurants/filter`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
             setRestaurants(data);
         } catch (error) {
             console.error("Błąd pobierania restauracji:", error);
@@ -195,39 +200,36 @@ export const RestaurantsList: React.FC = () => {
             const response = await fetch(`${API_URL}/restaurants/cuisines`);
             const data = await response.json();
             setCuisines(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch {
             setCuisines([]);
         }
     };
 
-    // SZUKAJ
+    // SZUKAJ → używa /filter
     const handleSearch = async () => {
         setLoading(true);
         try {
-            const params: any = {};
-            const trimmed = nameFilter.trim();
-            if (trimmed) params.name = trimmed;
+            const params: FilterParams = {};
 
-            if (selectedCity) {
-                const loc = getLocationString();
+            if (nameFilter.trim()) params.name = nameFilter.trim();
 
-                if (radius && radius > 0) {
-                    params.latitude = selectedCity.latitude;
-                    params.longitude = selectedCity.longitude;
-                    params.radius = radius;
-                } else if (loc) {
-                    params.location = loc;
-                }
-
-                setLocationFilters({
-                    location: loc,
-                    latitude: selectedCity.latitude,
-                    longitude: selectedCity.longitude,
-                    radius: radius || 0,
-                });
+            if (locationFilters?.location) {
+                params.location = locationFilters.location;
             }
 
-            const data = await searchRestaurants(params);
+            if (radius > 0 && selectedCity) {
+                params.latitude = selectedCity.latitude;
+                params.longitude = selectedCity.longitude;
+                params.radius = radius;
+            }
+
+            const res = await fetch(`${API_URL}/restaurants/filter`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(params),
+            });
+
+            const data = await res.json();
             setRestaurants(data);
         } catch (e) {
             console.error("Błąd szukania", e);
@@ -242,42 +244,37 @@ export const RestaurantsList: React.FC = () => {
             d.getDate()
         ).padStart(2, "0")}`;
 
-    // FILTRUJ
+    // FILTER → kompletne filtrowanie
     const handleFilter = async () => {
         setLoading(true);
         try {
-            const filters: FilterParams = locationFilters ? { ...locationFilters } : {};
+            const filters: FilterParams = {};
 
             const loc = getLocationString();
-            if (loc) {
-                filters.location = loc;
+            if (loc) filters.location = loc;
+
+            if (radius > 0 && selectedCity) {
+                filters.latitude = selectedCity.latitude;
+                filters.longitude = selectedCity.longitude;
+                filters.radius = radius;
             }
 
-            if (cuisineFilter?.length) filters.cuisine = cuisineFilter;
+            if (cuisineFilter.length) filters.cuisine = cuisineFilter;
             if (minRating !== null) filters.minRating = minRating;
             if (sortOrder) filters.sortOrder = sortOrder;
             if (sortByDistance) filters.sortByDistance = true;
 
             if (selectedDate) filters.date = toYMD(selectedDate);
-            if (selectedTime) filters.time = selectedTime.slice(0, 5);
-            if (people && people > 0) filters.partySize = people;
+            if (selectedTime) filters.time = selectedTime;
+            if (people > 0) filters.partySize = people;
 
-            // jeśli promień = 0 → usuń geolokalizację (zostaje tylko miasto/dzielnice)
-            if (filters.radius === 0) {
-                delete filters.latitude;
-                delete filters.longitude;
-                delete filters.radius;
-            }
-
-            const response = await fetch(`${API_URL}/restaurants/filter`, {
+            const res = await fetch(`${API_URL}/restaurants/filter`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(filters),
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const filtered = await response.json();
+            const filtered = await res.json();
             setRestaurants(filtered);
         } catch (error) {
             console.error("Błąd filtrowania restauracji:", error);
@@ -324,13 +321,11 @@ export const RestaurantsList: React.FC = () => {
                 {/* MultiSelect dzielnic */}
                 <MultiSelect
                     label="Dzielnice"
-                    placeholder={
-                        selectedCity ? "Wybierz jedną lub kilka dzielnic (opcjonalnie)" : "Najpierw wybierz miasto"
-                    }
-                    data={districts.map((d) => ({ label: d, value: d }))}
+                    placeholder={selectedCity ? "Wybierz dzielnice" : "Najpierw wybierz miasto"}
+                    data={districts.map((d) => ({ value: d, label: d }))}
                     value={selectedDistricts}
                     onChange={setSelectedDistricts}
-                    disabled={!selectedCity || districts.length === 0}
+                    disabled={!selectedCity}
                     clearable
                     searchable
                 />
@@ -338,37 +333,17 @@ export const RestaurantsList: React.FC = () => {
                 <NumberInput
                     label="Promień wyszukiwania (km)"
                     value={radius}
-                    onChange={(val) => setRadius(typeof val === "number" ? val : 0)}
+                    onChange={(val) => setRadius(Number(val))}
                     min={0}
                     max={50}
                     disabled={!selectedCity}
                 />
 
-                {/* Dostępność */}
-                <Group grow>
-                    <DateInput
-                        label="Data dostępności"
-                        placeholder="Wybierz datę"
-                        value={selectedDate}
-                        onChange={setSelectedDate}
-                    />
-                    <TimeInput
-                        label="Godzina"
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.currentTarget.value.slice(0, 5))}
-                    />
-                    <NumberInput
-                        label="Liczba osób"
-                        min={1}
-                        value={people}
-                        onChange={(v) => setPeople(typeof v === "number" ? v : 1)}
-                    />
-                </Group>
-
                 <Group>
                     <Button onClick={handleSearch} disabled={loading}>
                         {loading ? <Loader size="sm" /> : "Szukaj"}
                     </Button>
+
                     <Button
                         variant="default"
                         onClick={() => {
@@ -384,7 +359,6 @@ export const RestaurantsList: React.FC = () => {
                             setPeople(2);
                             setLocationFilters(null);
                             fetchRestaurants();
-                            fetchFavorites();
                         }}
                     >
                         Wyczyść
@@ -392,8 +366,8 @@ export const RestaurantsList: React.FC = () => {
                 </Group>
 
                 <MultiSelect
-                    label="Filtruj według kuchni"
-                    placeholder="Wybierz kuchnię"
+                    label="Kuchnia"
+                    placeholder="Wybierz kuchnie"
                     data={cuisines}
                     value={cuisineFilter}
                     onChange={setCuisineFilter}
@@ -403,7 +377,7 @@ export const RestaurantsList: React.FC = () => {
 
                 <NumberInput
                     label="Minimalna ocena"
-                    placeholder="Podaj ocenę (1-5)"
+                    placeholder="1-5"
                     min={1}
                     max={5}
                     step={0.5}
@@ -414,7 +388,7 @@ export const RestaurantsList: React.FC = () => {
                 />
 
                 <Select
-                    label="Sortuj wg oceny"
+                    label="Sortowanie wg oceny"
                     placeholder="Wybierz sortowanie"
                     data={[
                         { label: "Od najwyższej", value: "desc" },
@@ -426,10 +400,10 @@ export const RestaurantsList: React.FC = () => {
                 />
 
                 <Checkbox
-                    label="Sortuj wg odległości od wybranej lokalizacji"
+                    label="Sortuj wg odległości"
                     checked={sortByDistance}
-                    onChange={(event) => setSortByDistance(event.currentTarget.checked)}
-                    disabled={!selectedCity && (!mapLocation || radius === 0)}
+                    onChange={(e) => setSortByDistance(e.currentTarget.checked)}
+                    disabled={!selectedCity || radius === 0}
                 />
 
                 <Group>
@@ -488,11 +462,10 @@ export const RestaurantsList: React.FC = () => {
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
                     {[...restaurants]
                         .sort((a, b) => {
-                            const ar = a.avgRating ?? 0;
-                            const br = b.avgRating ?? 0;
-
-                            if (sortOrder === "asc") return ar - br;
-                            if (sortOrder === "desc") return br - ar;
+                            if (sortOrder === "asc")
+                                return (a.avgRating ?? 0) - (b.avgRating ?? 0);
+                            if (sortOrder === "desc")
+                                return (b.avgRating ?? 0) - (a.avgRating ?? 0);
                             return 0;
                         })
                         .map((restaurant) => (
