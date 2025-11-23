@@ -20,6 +20,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RestaurantCard } from "./RestaurantCard";
+import {DateInput, TimeInput} from "@mantine/dates";
 
 const markerIcon = new L.Icon({
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -418,7 +419,30 @@ export const RestaurantsList: React.FC = () => {
                     onChange={(e) => setSortByDistance(e.currentTarget.checked)}
                     disabled={!selectedCity || radius === 0}
                 />
+                <Group grow>
+                    <DateInput
+                        label="Data"
+                        placeholder="Wybierz datę"
+                        value={selectedDate}
+                        onChange={setSelectedDate}
+                        minDate={new Date()}
+                    />
 
+                    <TimeInput
+                        label="Godzina"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.currentTarget.value)}
+                        withSeconds={false}
+                    />
+
+                    <NumberInput
+                        label="Liczba osób"
+                        value={people}
+                        onChange={(val) => setPeople(Number(val))}
+                        min={1}
+                        max={20}
+                    />
+                </Group>
                 <Group>
                     <Button onClick={handleFilter} disabled={loading}>
                         {loading ? <Loader size="sm" /> : "Filtruj"}
